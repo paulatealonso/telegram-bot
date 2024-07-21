@@ -4,6 +4,8 @@ import requests
 import os
 from dotenv import load_dotenv
 from mnemonic import Mnemonic
+from tonsdk.crypto import mnemonic_to_wallet_key
+from tonsdk.utils import to_nano
 
 # Cargar variables de entorno
 load_dotenv()
@@ -35,10 +37,13 @@ async def generate_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         # Generar una nueva frase mnemónica
         mnemo = Mnemonic("english")
         mnemonic = mnemo.generate(strength=256)
-        seed = mnemo.to_seed(mnemonic)
+        
+        # Convertir la frase mnemónica a una clave privada y pública
+        wallet_keys = mnemonic_to_wallet_key(mnemonic)
+        private_key, public_key = wallet_keys
 
-        # Simulación de generación de dirección de billetera (esto necesitaría ser reemplazado por una lógica real)
-        wallet_address = "Generated_Wallet_Address"
+        # Crear la dirección de la billetera manualmente
+        wallet_address = f"EQ{public_key.hex()[:48]}"
 
         response_message = f"Your new TON wallet has been generated!\nAddress: {wallet_address}\nSeed Phrase: {mnemonic}"
         await update.message.reply_text(response_message)
@@ -67,7 +72,7 @@ async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         response = requests.post(TONCENTER_API_URL + "/sendTransaction", headers=headers, json={
             "from": TON_WALLET_ADDRESS,
             "to": user_wallet,
-            "value": amount_after_fee,
+            "value": to_nano(amount_after_fee, "ton"),
             "private_key": TON_PRIVATE_KEY
         })
 
@@ -101,7 +106,7 @@ async def sell(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         response = requests.post(TONCENTER_API_URL + "/receiveTransaction", headers=headers, json={
             "from": user_wallet,
             "to": TON_WALLET_ADDRESS,
-            "value": amount_after_fee,
+            "value": to_nano(amount_after_fee, "ton"),
             "private_key": TON_PRIVATE_KEY
         })
 
