@@ -145,7 +145,7 @@ async def generate_and_store_wallet(update: Update, context: ContextTypes.DEFAUL
     )
 
     keyboard = [
-        [InlineKeyboardButton("⬅️ Back", callback_data=f'viewlastwallet_{wallet_index}')],
+        [InlineKeyboardButton("⬅️ Back", callback_data=f'viewwallet_{wallet_index}')],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -180,7 +180,7 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
                 [InlineKeyboardButton("⚙️ Manage Wallet", callback_data=f'managewallet_{wallet_index}')],
                 [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
                 [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
-                [InlineKeyboardButton("⬅️ Back", callback_data=f'viewwallet_{wallet_index}')]
+                [InlineKeyboardButton("⬅️ Back", callback_data=f'wallets')]
             ]),
             parse_mode='Markdown'
         )
