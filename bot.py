@@ -93,12 +93,16 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await view_wallet(update, context, command.split('_')[1])
     elif command == 'newwallet':
         await generate_and_store_wallet(update, context)
+    elif command.startswith('viewlastwallet_'):
+        await view_wallet(update, context, command.split('_')[1])
     elif command == 'mainmenu':
         user_id = update.callback_query.from_user.id
         if user_id in user_wallets and user_wallets[user_id]:
             await send_main_menu(query.message, True)
         else:
             await send_main_menu(query.message, False)
+    elif command.startswith('deletewallet_'):
+        await delete_wallet(update, context, command.split('_')[1])
 
 # Function to display wallets menu
 async def wallets_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -124,6 +128,9 @@ async def generate_and_store_wallet(update: Update, context: ContextTypes.DEFAUL
         "mnemonic": mnemonic
     })
 
+    # Get the index of the newly created wallet
+    wallet_index = len(user_wallets[user_id]) - 1
+
     # Prepare the response message
     response_message = (
         f"🎉 **New Wallet Generated!** 🎉\n\n"
@@ -138,7 +145,7 @@ async def generate_and_store_wallet(update: Update, context: ContextTypes.DEFAUL
     )
 
     keyboard = [
-        [InlineKeyboardButton("⬅️ Back", callback_data='viewwallets')],
+        [InlineKeyboardButton("⬅️ Back", callback_data=f'viewlastwallet_{wallet_index}')],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -173,10 +180,20 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
                 [InlineKeyboardButton("⚙️ Manage Wallet", callback_data=f'managewallet_{wallet_index}')],
                 [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
                 [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
-                [InlineKeyboardButton("⬅️ Back", callback_data='viewwallets')]
+                [InlineKeyboardButton("⬅️ Back", callback_data=f'viewwallet_{wallet_index}')]
             ]),
             parse_mode='Markdown'
         )
+    else:
+        await update.callback_query.edit_message_text("Invalid wallet index. Please select a valid wallet.")
+
+# Function to delete a wallet
+async def delete_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: str) -> None:
+    user_id = update.callback_query.from_user.id
+    wallet_index = int(wallet_index)
+    if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
+        user_wallets[user_id].pop(wallet_index)
+        await view_wallets(update, context)
     else:
         await update.callback_query.edit_message_text("Invalid wallet index. Please select a valid wallet.")
 
