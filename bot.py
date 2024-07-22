@@ -27,15 +27,19 @@ def generate_wallet():
     wallet_address = f"EQ{public_key.hex()[:48]}"
     return wallet_address, mnemonic
 
-# Start function
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    welcome_message = (
+# Function to get the welcome message
+def get_welcome_message() -> str:
+    return (
         "🎉 **Welcome to TON Call Secure Bot!** 🎉\n\n"
         "🔒 This bot helps you manage your TON wallets securely.\n"
         "💼 You can generate, view, and connect wallets, and perform transactions.\n\n"
         "🌐 [TON Call Secure Bot](https://web.telegram.org/k/#@HigherTonBot)\n\n"
         "Please choose an option to get started:"
     )
+
+# Start function
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    welcome_message = get_welcome_message()
 
     keyboard = [
         [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
@@ -56,6 +60,7 @@ async def home(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 # Main menu function
 async def send_main_menu(message, has_wallet: bool) -> None:
+    welcome_message = get_welcome_message()
     if has_wallet:
         keyboard = [
             [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
@@ -69,7 +74,7 @@ async def send_main_menu(message, has_wallet: bool) -> None:
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
         ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await message.reply_text('Please choose an option:', reply_markup=reply_markup)
+    await message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
 
 # Callback handler for button presses
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -180,7 +185,7 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
                 [InlineKeyboardButton("⚙️ Manage Wallet", callback_data=f'managewallet_{wallet_index}')],
                 [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
                 [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
-                [InlineKeyboardButton("⬅️ Back", callback_data=f'wallets')]
+                [InlineKeyboardButton("⬅️ Back", callback_data='wallets')]
             ]),
             parse_mode='Markdown'
         )
