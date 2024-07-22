@@ -29,6 +29,25 @@ def generate_wallet():
 
 # Start function
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    welcome_message = (
+        "🎉 **Welcome to TON Call Secure Bot!** 🎉\n\n"
+        "🔒 This bot helps you manage your TON wallets securely.\n"
+        "💼 You can generate, view, and connect wallets, and perform transactions.\n\n"
+        "🌐 [TON Call Secure Bot](https://web.telegram.org/k/#@HigherTonBot)\n\n"
+        "Please choose an option to get started:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
+        [InlineKeyboardButton("🔍 View Wallets", callback_data='viewwallets')],
+        [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
+        [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
+
+# Home function
+async def home(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
     if user_id in user_wallets and user_wallets[user_id]:
         await send_main_menu(update.message, True)
@@ -119,7 +138,7 @@ async def generate_and_store_wallet(update: Update, context: ContextTypes.DEFAUL
     )
 
     keyboard = [
-        [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')],
+        [InlineKeyboardButton("⬅️ Back", callback_data='viewwallets')],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -186,8 +205,8 @@ async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_text = (
         "Available commands:\n"
-        "/start - Start the bot and access the main menu\n"
-        "/mywallets - Show your wallets\n"
+        "/start - Start the bot\n"
+        "/home - Access the main menu\n"
         "/connect <wallet_address> <seed_phrase> - Connect an existing wallet\n"
         "/buy <amount> <destination_wallet> - Buy TON coins\n"
         "/sell <amount> <source_wallet> - Sell TON coins\n"
@@ -266,6 +285,7 @@ def main() -> None:
     application = Application.builder().token(TELEGRAM_API_KEY).build()
 
     application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('home', home))
     application.add_handler(CommandHandler('help', help_command))
     application.add_handler(CommandHandler('buy', buy))
     application.add_handler(CommandHandler('sell', sell))
