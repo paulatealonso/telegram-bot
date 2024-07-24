@@ -107,6 +107,8 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await send_main_menu(query.message, True)
         else:
             await send_main_menu(query.message, False)
+    elif command.startswith('managewallet_'):
+        await manage_wallet(update, context, command.split('_')[1])
     elif command.startswith('deletewallet_'):
         await delete_wallet(update, context, command.split('_')[1])
 
@@ -192,7 +194,6 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
                 [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
                 [InlineKeyboardButton("⚙️ Manage Wallet", callback_data=f'managewallet_{wallet_index}')],
                 [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
-                [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
                 [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
             ]),
             parse_mode='Markdown'
@@ -200,24 +201,35 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
     else:
         await update.callback_query.edit_message_text("Invalid wallet index. Please select a valid wallet.")
 
-# Function to delete a wallet
+# Function to manage a specific wallet
+async def manage_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: str) -> None:
+    user_id = update.callback_query.from_user.id
+    wallet_index = int(wallet_index)
+    if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
+        wallet = user_wallets[user_id][wallet_index]
+        keyboard = [
+            [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
+            [InlineKeyboardButton("⬅️ Back", callback_data=f'viewwallet_{wallet_index}')],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.callback_query.edit_message_text(
+            f"{get_welcome_message()}\n\n"
+            f"🔑 **Wallet Address:** `{wallet['address']}`\n"
+            f"💰 **Balance:** 0.0 TON (dummy value for now)\n\n"
+            f"🔧 **Manage Wallet Options:**",
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+
+# Function to delete a specific wallet
 async def delete_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: str) -> None:
     user_id = update.callback_query.from_user.id
     wallet_index = int(wallet_index)
     if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
-        user_wallets[user_id].pop(wallet_index)
-        if user_wallets[user_id]:
-            await view_wallets(update, context)
-        else:
-            keyboard = [
-                [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
-                [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
-                [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')],
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.callback_query.edit_message_text("You don't have any wallets yet. Use the options to create or connect a wallet.", reply_markup=reply_markup)
-    else:
-        await update.callback_query.edit_message_text("Invalid wallet index. Please select a valid wallet.")
+        del user_wallets[user_id][wallet_index]
+        if not user_wallets[user_id]:
+            del user_wallets[user_id]
+        await view_wallets(update, context)
 
 # Function to connect an existing wallet
 async def connect_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
