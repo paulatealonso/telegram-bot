@@ -70,7 +70,8 @@ async def send_main_menu(message, has_wallet: bool) -> None:
         ]
     else:
         keyboard = [
-            [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
+            [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
+            [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
         ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -164,11 +165,17 @@ async def view_wallets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         keyboard = [
             [InlineKeyboardButton(f"Wallet {i+1}", callback_data=f'viewwallet_{i}')] for i in range(len(wallets))
         ]
-        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data='wallets')])
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.callback_query.edit_message_text('Your Wallets:', reply_markup=reply_markup)
     else:
-        await update.callback_query.edit_message_text("You don't have any wallets yet. Use the options to create or connect a wallet.")
+        keyboard = [
+            [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
+            [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
+            [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.callback_query.edit_message_text("You don't have any wallets yet. Use the options to create or connect a wallet.", reply_markup=reply_markup)
 
 # Function to view a specific wallet
 async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: str) -> None:
@@ -199,7 +206,16 @@ async def delete_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wall
     wallet_index = int(wallet_index)
     if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
         user_wallets[user_id].pop(wallet_index)
-        await view_wallets(update, context)
+        if user_wallets[user_id]:
+            await view_wallets(update, context)
+        else:
+            keyboard = [
+                [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
+                [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
+                [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')],
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.callback_query.edit_message_text("You don't have any wallets yet. Use the options to create or connect a wallet.", reply_markup=reply_markup)
     else:
         await update.callback_query.edit_message_text("Invalid wallet index. Please select a valid wallet.")
 
