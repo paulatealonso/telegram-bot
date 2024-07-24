@@ -177,6 +177,7 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
     if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
         wallet = user_wallets[user_id][wallet_index]
         await update.callback_query.edit_message_text(
+            f"{get_welcome_message()}\n\n"
             f"🔑 **Wallet Address:** `{wallet['address']}`\n"
             f"💰 **Balance:** 0.0 TON (dummy value for now)\n"
             f"⬅️ **Options:**",
@@ -185,7 +186,7 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
                 [InlineKeyboardButton("⚙️ Manage Wallet", callback_data=f'managewallet_{wallet_index}')],
                 [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
                 [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
-                [InlineKeyboardButton("⬅️ Back", callback_data='wallets')]
+                [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
             ]),
             parse_mode='Markdown'
         )
