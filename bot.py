@@ -68,10 +68,15 @@ async def home(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def send_main_menu(message, user_id: int) -> None:
     welcome_message = get_welcome_message()
     if user_id in user_wallets and user_wallets[user_id]:
+        wallet_info = user_wallets[user_id][-1]
+        welcome_message += (
+            f"\n\n🔑 **Your Wallet Address:** `{wallet_info['address']}`\n"
+            f"💰 **Balance:** 0.0 TON (dummy value for now)\n"
+        )
         keyboard = [
-            [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
             [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
             [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
+            [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
         ]
     else:
@@ -159,12 +164,8 @@ async def generate_and_store_wallet(update: Update, context: ContextTypes.DEFAUL
         f"🔒 **Your wallet has been successfully created.** You can now use this address to receive TON coins."
     )
 
-    keyboard = [
-        [InlineKeyboardButton("⬅️ Back", callback_data=f'viewwallet_{wallet_index}')],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await update.callback_query.edit_message_text(response_message, parse_mode='Markdown', reply_markup=reply_markup)
+    await update.callback_query.edit_message_text(response_message, parse_mode='Markdown')
+    await send_main_menu(update.callback_query.message, user_id)
 
 # Function to display user's wallets
 async def view_wallets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -259,6 +260,7 @@ async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "mnemonic": seed_phrase
         })
         await update.message.reply_text(f"Wallet `{wallet_address}` connected successfully.", parse_mode='Markdown')
+        await send_main_menu(update.message, user_id)
     except IndexError:
         await update.message.reply_text("Usage: /connect <wallet_address> <seed_phrase>")
 
