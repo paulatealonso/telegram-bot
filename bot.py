@@ -186,13 +186,15 @@ async def generate_and_store_wallet(update: Update, context: ContextTypes.DEFAUL
 async def view_wallets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.callback_query.from_user.id
     if user_id in user_wallets and user_wallets[user_id]:
+        wallet_info = user_wallets[user_id][-1]
+        welcome_message = get_welcome_message(wallet_info)
         wallets = user_wallets[user_id]
-        keyboard = [
+        wallet_buttons = [
             [InlineKeyboardButton(f"Wallet {i+1}", callback_data=f'viewwallet_{i}')] for i in range(len(wallets))
         ]
-        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')])
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.callback_query.edit_message_text("Your Wallets:", reply_markup=reply_markup)
+        wallet_buttons.append([InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')])
+        reply_markup = InlineKeyboardMarkup(wallet_buttons)
+        await update.callback_query.edit_message_text(welcome_message + "\n\nYour Wallets:", reply_markup=reply_markup, parse_mode='Markdown')
     else:
         welcome_message = get_welcome_message()
         keyboard = [
@@ -209,9 +211,9 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
     wallet_index = int(wallet_index)
     if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
         wallet = user_wallets[user_id][wallet_index]
+        wallet_info = wallet
         new_text = (
-            f"🔑 **Wallet Address:** `{wallet['address']}`\n"
-            f"💰 **Balance:** 0.0 TON (dummy value for now)\n"
+            f"{get_welcome_message(wallet_info)}\n\n"
             f"⬅️ **Options:**"
         )
         new_reply_markup = InlineKeyboardMarkup([
@@ -234,14 +236,14 @@ async def manage_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wall
     wallet_index = int(wallet_index)
     if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
         wallet = user_wallets[user_id][wallet_index]
+        wallet_info = wallet
         keyboard = [
             [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
             [InlineKeyboardButton("⬅️ Back", callback_data=f'viewwallet_{wallet_index}')],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.callback_query.edit_message_text(
-            f"🔑 **Wallet Address:** `{wallet['address']}`\n"
-            f"💰 **Balance:** 0.0 TON (dummy value for now)\n\n"
+            f"{get_welcome_message(wallet_info)}\n\n"
             f"🔧 **Manage Wallet Options:**",
             reply_markup=reply_markup,
             parse_mode='Markdown'
