@@ -273,7 +273,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "/sell <amount> <source_wallet> - Sell TON coins\n"
         "/help - Show this help message\n"
     )
-    await update.message.reply_text(help_text)
+    
+    if update.message:
+        await update.message.reply_text(help_text)
+    elif update.callback_query:
+        await update.callback_query.edit_message_text(help_text)
 
 # Function to buy TON coins
 async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
