@@ -28,28 +28,35 @@ def generate_wallet():
     return wallet_address, mnemonic
 
 # Function to get the welcome message
-def get_welcome_message() -> str:
-    return (
+def get_welcome_message(wallet_info=None) -> str:
+    welcome_message = (
         "🎉 **Welcome to TON Call Secure Bot!** 🎉\n\n"
         "🔒 This bot helps you manage your TON wallets securely.\n"
         "💼 You can generate, view, and connect wallets, and perform transactions.\n\n"
         "🌐 [TON Call Secure Bot](https://web.telegram.org/k/#@HigherTonBot)\n\n"
         "Please choose an option to get started:"
     )
+    if wallet_info:
+        welcome_message += (
+            f"\n\n🔑 **Your Wallet Address:** `{wallet_info['address']}`\n"
+            f"💰 **Balance:** 0.0 TON (dummy value for now)\n"
+        )
+    return welcome_message
 
 # Start function
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
-    welcome_message = get_welcome_message()
-
     if user_id in user_wallets and user_wallets[user_id]:
+        wallet_info = user_wallets[user_id][-1]
+        welcome_message = get_welcome_message(wallet_info)
         keyboard = [
-            [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
-            [InlineKeyboardButton("🔍 View Wallets", callback_data='viewwallets')],
-            [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
+            [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
+            [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
+            [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
         ]
     else:
+        welcome_message = get_welcome_message()
         keyboard = [
             [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
             [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
@@ -66,13 +73,9 @@ async def home(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 # Main menu function
 async def send_main_menu(message, user_id: int) -> None:
-    welcome_message = get_welcome_message()
     if user_id in user_wallets and user_wallets[user_id]:
         wallet_info = user_wallets[user_id][-1]
-        welcome_message += (
-            f"\n\n🔑 **Your Wallet Address:** `{wallet_info['address']}`\n"
-            f"💰 **Balance:** 0.0 TON (dummy value for now)\n"
-        )
+        welcome_message = get_welcome_message(wallet_info)
         keyboard = [
             [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
             [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
@@ -80,6 +83,7 @@ async def send_main_menu(message, user_id: int) -> None:
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
         ]
     else:
+        welcome_message = get_welcome_message()
         keyboard = [
             [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
             [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
@@ -126,14 +130,25 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 # Function to display wallets menu
 async def wallets_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    keyboard = [
-        [InlineKeyboardButton("➕ New Wallet", callback_data='newwallet')],
-        [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
-        [InlineKeyboardButton("🔍 View Wallets", callback_data='viewwallets')],
-        [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
-    ]
+    user_id = update.callback_query.from_user.id
+    if user_id in user_wallets and user_wallets[user_id]:
+        wallet_info = user_wallets[user_id][-1]
+        welcome_message = get_welcome_message(wallet_info)
+        keyboard = [
+            [InlineKeyboardButton("➕ New Wallet", callback_data='newwallet')],
+            [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
+            [InlineKeyboardButton("🔍 View Wallets", callback_data='viewwallets')],
+            [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
+        ]
+    else:
+        welcome_message = get_welcome_message()
+        keyboard = [
+            [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
+            [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
+            [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')],
+        ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.edit_message_text('Wallet Management:', reply_markup=reply_markup)
+    await update.callback_query.edit_message_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
 
 # Function to generate and store a new wallet
 async def generate_and_store_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -171,21 +186,24 @@ async def generate_and_store_wallet(update: Update, context: ContextTypes.DEFAUL
 async def view_wallets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.callback_query.from_user.id
     if user_id in user_wallets and user_wallets[user_id]:
+        wallet_info = user_wallets[user_id][-1]
+        welcome_message = get_welcome_message(wallet_info)
         wallets = user_wallets[user_id]
         keyboard = [
             [InlineKeyboardButton(f"Wallet {i+1}", callback_data=f'viewwallet_{i}')] for i in range(len(wallets))
         ]
         keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.callback_query.edit_message_text('Your Wallets:', reply_markup=reply_markup)
+        await update.callback_query.edit_message_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
     else:
+        welcome_message = get_welcome_message()
         keyboard = [
             [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
             [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
             [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.callback_query.edit_message_text("You don't have any wallets yet. Use the options to create or connect a wallet.", reply_markup=reply_markup)
+        await update.callback_query.edit_message_text(welcome_message + "\n\nYou don't have any wallets yet. Use the options to create or connect a wallet.", reply_markup=reply_markup, parse_mode='Markdown')
 
 # Function to view a specific wallet
 async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: str) -> None:
@@ -194,7 +212,7 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
     if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
         wallet = user_wallets[user_id][wallet_index]
         new_text = (
-            f"{get_welcome_message()}\n\n"
+            f"{get_welcome_message(wallet)}\n\n"
             f"🔑 **Wallet Address:** `{wallet['address']}`\n"
             f"💰 **Balance:** 0.0 TON (dummy value for now)\n"
             f"⬅️ **Options:**"
@@ -224,7 +242,7 @@ async def manage_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wall
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.callback_query.edit_message_text(
-            f"{get_welcome_message()}\n\n"
+            f"{get_welcome_message(wallet)}\n\n"
             f"🔑 **Wallet Address:** `{wallet['address']}`\n"
             f"💰 **Balance:** 0.0 TON (dummy value for now)\n\n"
             f"🔧 **Manage Wallet Options:**",
