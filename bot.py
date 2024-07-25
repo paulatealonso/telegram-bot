@@ -39,29 +39,35 @@ def get_welcome_message() -> str:
 
 # Start function
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.message.from_user.id
     welcome_message = get_welcome_message()
 
-    keyboard = [
-        [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
-        [InlineKeyboardButton("🔍 View Wallets", callback_data='viewwallets')],
-        [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
-        [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
-    ]
+    if user_id in user_wallets and user_wallets[user_id]:
+        keyboard = [
+            [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
+            [InlineKeyboardButton("🔍 View Wallets", callback_data='viewwallets')],
+            [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
+            [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
+        ]
+    else:
+        keyboard = [
+            [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
+            [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
+            [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
+        ]
+
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
 
 # Home function
 async def home(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
-    if user_id in user_wallets and user_wallets[user_id]:
-        await send_main_menu(update.message, True)
-    else:
-        await send_main_menu(update.message, False)
+    await send_main_menu(update.message, user_id)
 
 # Main menu function
-async def send_main_menu(message, has_wallet: bool) -> None:
+async def send_main_menu(message, user_id: int) -> None:
     welcome_message = get_welcome_message()
-    if has_wallet:
+    if user_id in user_wallets and user_wallets[user_id]:
         keyboard = [
             [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
             [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
@@ -76,6 +82,10 @@ async def send_main_menu(message, has_wallet: bool) -> None:
         ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
+
+# Helper function to compare message contents
+def message_content_changed(current_message, new_text, new_reply_markup):
+    return current_message.text != new_text or current_message.reply_markup != new_reply_markup
 
 # Callback handler for button presses
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -103,10 +113,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await view_wallet(update, context, command.split('_')[1])
     elif command == 'mainmenu':
         user_id = update.callback_query.from_user.id
-        if user_id in user_wallets and user_wallets[user_id]:
-            await send_main_menu(query.message, True)
-        else:
-            await send_main_menu(query.message, False)
+        await send_main_menu(query.message, user_id)
     elif command.startswith('managewallet_'):
         await manage_wallet(update, context, command.split('_')[1])
     elif command.startswith('deletewallet_'):
@@ -185,19 +192,22 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
     wallet_index = int(wallet_index)
     if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
         wallet = user_wallets[user_id][wallet_index]
-        await update.callback_query.edit_message_text(
+        new_text = (
             f"{get_welcome_message()}\n\n"
             f"🔑 **Wallet Address:** `{wallet['address']}`\n"
             f"💰 **Balance:** 0.0 TON (dummy value for now)\n"
-            f"⬅️ **Options:**",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
-                [InlineKeyboardButton("⚙️ Manage Wallet", callback_data=f'managewallet_{wallet_index}')],
-                [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
-                [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
-            ]),
-            parse_mode='Markdown'
+            f"⬅️ **Options:**"
         )
+        new_reply_markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
+            [InlineKeyboardButton("⚙️ Manage Wallet", callback_data=f'managewallet_{wallet_index}')],
+            [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
+            [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
+        ])
+        if message_content_changed(update.callback_query.message, new_text, new_reply_markup):
+            await update.callback_query.edit_message_text(new_text, reply_markup=new_reply_markup, parse_mode='Markdown')
+        else:
+            await update.callback_query.answer("No changes detected.")
     else:
         await update.callback_query.edit_message_text("Invalid wallet index. Please select a valid wallet.")
 
