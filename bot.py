@@ -15,8 +15,9 @@ TON_WALLET_ADDRESS = os.getenv('TON_WALLET_ADDRESS')
 TON_PRIVATE_KEY = os.getenv('TON_PRIVATE_KEY')
 TONCENTER_API_URL = os.getenv('TONCENTER_API_URL')
 
-# In-memory storage for user wallets
+# In-memory storage for user wallets and languages
 user_wallets = {}
+user_languages = {}
 
 # Function to generate a new TON wallet
 def generate_wallet():
@@ -28,33 +29,31 @@ def generate_wallet():
     return wallet_address, mnemonic
 
 # Function to get the welcome message
-def get_welcome_message(wallet_info=None) -> str:
-    welcome_message = (
-        "🎉 **Welcome to TON Call Secure Bot!** 🎉\n\n"
-        "🔒 This bot helps you manage your TON wallets securely.\n"
-        "💼 You can generate, view, and connect wallets, and perform transactions.\n\n"
-        "🌐 [TON Call Secure](https://t.me/TONCALLSECURE)\n\n"
-        "Please choose an option to get started:"
-    )
+def get_welcome_message(wallet_info=None, lang='en') -> str:
+    messages = {
+        'en': {
+            'welcome': "🎉 **Welcome to TON Call Secure Bot!** 🎉\n\n🔒 This bot helps you manage your TON wallets securely.\n💼 You can generate, view, and connect wallets, and perform transactions.\n\n🌐 [TON Call Secure](https://t.me/TONCALLSECURE)\n\nPlease choose an option to get started:",
+            'wallet_address': "\n\n🔑 **Your Wallet Address:** `{}`\n💰 **Balance:** 0.0 TON (dummy value for now)\n"
+        },
+        'es': {
+            'welcome': "🎉 **Bienvenido al Bot de Seguridad TON Call!** 🎉\n\n🔒 Este bot te ayuda a gestionar tus wallets de TON de forma segura.\n💼 Puedes generar, ver y conectar wallets, y realizar transacciones.\n\n🌐 [TON Call Secure](https://t.me/TONCALLSECURE)\n\nPor favor, elige una opción para comenzar:",
+            'wallet_address': "\n\n🔑 **Tu dirección de wallet:** `{}`\n💰 **Saldo:** 0.0 TON (valor ficticio por ahora)\n"
+        }
+    }
+
+    welcome_message = messages[lang]['welcome']
     if wallet_info:
-        welcome_message += (
-            f"\n\n🔑 **Your Wallet Address:** `{wallet_info['address']}`\n"
-            f"💰 **Balance:** 0.0 TON (dummy value for now)\n"
-        )
+        welcome_message += messages[lang]['wallet_address'].format(wallet_info['address'])
     return welcome_message
 
 # Start function
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.message:
-        user_id = update.message.from_user.id
-    elif update.callback_query:
-        user_id = update.callback_query.from_user.id
-    else:
-        return
+    user_id = update.message.from_user.id if update.message else update.callback_query.from_user.id
+    lang = user_languages.get(user_id, 'en')
 
     if user_id in user_wallets and user_wallets[user_id]:
         wallet_info = user_wallets[user_id][-1]
-        welcome_message = get_welcome_message(wallet_info)
+        welcome_message = get_welcome_message(wallet_info, lang)
         keyboard = [
             [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
             [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
@@ -63,7 +62,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
         ]
     else:
-        welcome_message = get_welcome_message()
+        welcome_message = get_welcome_message(lang=lang)
         keyboard = [
             [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
             [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
@@ -77,7 +76,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     elif update.callback_query:
         await update.callback_query.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
 
-
 # Home function
 async def home(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
@@ -85,9 +83,10 @@ async def home(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 # Main menu function
 async def send_main_menu(message, user_id: int) -> None:
+    lang = user_languages.get(user_id, 'en')
     if user_id in user_wallets and user_wallets[user_id]:
         wallet_info = user_wallets[user_id][-1]
-        welcome_message = get_welcome_message(wallet_info)
+        welcome_message = get_welcome_message(wallet_info, lang)
         keyboard = [
             [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
             [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
@@ -96,7 +95,7 @@ async def send_main_menu(message, user_id: int) -> None:
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
         ]
     else:
-        welcome_message = get_welcome_message()
+        welcome_message = get_welcome_message(lang=lang)
         keyboard = [
             [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
             [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
@@ -145,13 +144,16 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await settings_menu(update, context)
     elif command == 'change_language':
         await change_language_menu(update, context)
+    elif command.startswith('set_lang_'):
+        await set_language(update, context, command.split('_')[2])
 
 # Function to display wallets menu
 async def wallets_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.callback_query.from_user.id
+    lang = user_languages.get(user_id, 'en')
     if user_id in user_wallets and user_wallets[user_id]:
         wallet_info = user_wallets[user_id][-1]
-        welcome_message = get_welcome_message(wallet_info)
+        welcome_message = get_welcome_message(wallet_info, lang)
         keyboard = [
             [InlineKeyboardButton("➕ New Wallet", callback_data='newwallet')],
             [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
@@ -159,7 +161,7 @@ async def wallets_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
         ]
     else:
-        welcome_message = get_welcome_message()
+        welcome_message = get_welcome_message(lang=lang)
         keyboard = [
             [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
             [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
@@ -204,9 +206,10 @@ async def generate_and_store_wallet(update: Update, context: ContextTypes.DEFAUL
 # Function to display user's wallets
 async def view_wallets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.callback_query.from_user.id
+    lang = user_languages.get(user_id, 'en')
     if user_id in user_wallets and user_wallets[user_id]:
         wallet_info = user_wallets[user_id][-1]
-        welcome_message = get_welcome_message(wallet_info)
+        welcome_message = get_welcome_message(wallet_info, lang)
         wallets = user_wallets[user_id]
         wallet_buttons = [
             [InlineKeyboardButton(f"Wallet {i+1}", callback_data=f'viewwallet_{i}')] for i in range(len(wallets))
@@ -221,6 +224,7 @@ async def view_wallets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 # Function to view a specific wallet
 async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: str) -> None:
     user_id = update.callback_query.from_user.id
+    lang = user_languages.get(user_id, 'en')
     wallet_index = int(wallet_index)
     if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
         wallet = user_wallets[user_id][wallet_index]
@@ -232,7 +236,7 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
             positions_text = "No positions added yet."
 
         new_text = (
-            f"{get_welcome_message(wallet_info)}\n\n"
+            f"{get_welcome_message(wallet_info, lang)}\n\n"
             f"💼 **Your Positions:**\n{positions_text}\n\n"
             f"⬅️ **Options:**"
         )
@@ -253,6 +257,7 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
 # Function to manage a specific wallet
 async def manage_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: str) -> None:
     user_id = update.callback_query.from_user.id
+    lang = user_languages.get(user_id, 'en')
     wallet_index = int(wallet_index)
     if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
         wallet = user_wallets[user_id][wallet_index]
@@ -263,7 +268,7 @@ async def manage_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wall
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.callback_query.edit_message_text(
-            f"{get_welcome_message(wallet_info)}\n\n"
+            f"{get_welcome_message(wallet_info, lang)}\n\n"
             f"🔧 **Manage Wallet Options:**",
             reply_markup=reply_markup,
             parse_mode='Markdown'
@@ -339,7 +344,7 @@ async def settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     ]
 
     if user_id in user_wallets and user_wallets[user_id]:
-        keyboard.insert(0, [InlineKeyboardButton("❌ Delete Wallet", callback_data='deletewallet')])
+        keyboard.insert(0, [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_0')])
 
     keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')])
 
@@ -356,18 +361,39 @@ async def change_language_menu(update: Update, context: ContextTypes.DEFAULT_TYP
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text("🌐 **Select Language**", reply_markup=reply_markup, parse_mode='Markdown')
 
+# Function to set the language
+async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE, lang: str) -> None:
+    user_id = update.callback_query.from_user.id
+    user_languages[user_id] = lang
+    await start(update, context)
+
 # Help function
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    help_text = (
-        "Available commands:\n"
-        "/start - Start the bot\n"
-        "/home - Access the main menu\n"
-        "/connect <wallet_address> <seed_phrase> - Connect an existing wallet\n"
-        "/buy <amount> <destination_wallet> - Buy TON coins\n"
-        "/sell <amount> <source_wallet> - Sell TON coins\n"
-        "/addposition <wallet_index> <coin> <amount> - Add position to wallet\n"
-        "/help - Show this help message\n"
-    )
+    user_id = update.message.from_user.id if update.message else update.callback_query.from_user.id
+    lang = user_languages.get(user_id, 'en')
+
+    help_texts = {
+        'en': (
+            "Available commands:\n"
+            "/start - Start the bot\n"
+            "/home - Access the main menu\n"
+            "/connect <wallet_address> <seed_phrase> - Connect an existing wallet\n"
+            "/buy <amount> <destination_wallet> - Buy TON coins\n"
+            "/sell <amount> <source_wallet> - Sell TON coins\n"
+            "/help - Show this help message\n"
+        ),
+        'es': (
+            "Comandos disponibles:\n"
+            "/start - Iniciar el bot\n"
+            "/home - Acceder al menú principal\n"
+            "/connect <wallet_address> <seed_phrase> - Conectar una wallet existente\n"
+            "/buy <amount> <destination_wallet> - Comprar monedas TON\n"
+            "/sell <amount> <source_wallet> - Vender monedas TON\n"
+            "/help - Mostrar este mensaje de ayuda\n"
+        )
+    }
+
+    help_text = help_texts[lang]
 
     keyboard = [
         [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
@@ -438,7 +464,7 @@ async def sell(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "private_key": TON_PRIVATE_KEY
         })
 
-        if (response.status_code == 200):
+        if response.status_code == 200:
             await update.message.reply_text(f'Transaction successful: {response.json()}')
         else:
             await update.message.reply_text(f'Error: {response.json()}')
