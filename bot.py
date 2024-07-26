@@ -138,6 +138,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     elif command.startswith('deletewallet_'):
         await delete_wallet(update, context, command.split('_')[1])
 
+
 # Function to display wallets menu
 async def wallets_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.callback_query.from_user.id
@@ -336,6 +337,7 @@ async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     except IndexError:
         await update.message.reply_text("Usage: /connect <wallet_address> <seed_phrase>")
 
+
 # Help function
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_text = (
@@ -347,11 +349,17 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "/sell <amount> <source_wallet> - Sell TON coins\n"
         "/help - Show this help message\n"
     )
-    
+
+    keyboard = [
+        [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     if update.message:
-        await update.message.reply_text(help_text)
+        await update.message.reply_text(help_text, reply_markup=reply_markup)
     elif update.callback_query:
-        await update.callback_query.edit_message_text(help_text)
+        await update.callback_query.edit_message_text(help_text, reply_markup=reply_markup)
+
 
 # Function to buy TON coins
 async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
