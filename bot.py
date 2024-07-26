@@ -284,16 +284,60 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
         if not positions_text:
             positions_text = "No positions added yet."
 
-        new_text = (
-            f"{get_welcome_message(wallet_info, lang)}\n\n"
-            f"💼 **Your Positions:**\n{positions_text}\n\n"
-        )
+        wallet_details = {
+            'en': (
+                f"**Your Wallet:**\n"
+                f"🔑 **Address:** `{wallet['address']}`\n"
+                f"💰 **Balance:** 2.32967101 TON (dummy value for now)\n"
+                f"📜 **Mnemonic:** `{wallet['mnemonic']}`\n"
+                f"Touch to copy the address and send TON to deposit."
+            ),
+            'es': (
+                f"**Tu Cartera:**\n"
+                f"🔑 **Dirección:** `{wallet['address']}`\n"
+                f"💰 **Saldo:** 2.32967101 TON (valor simulado por ahora)\n"
+                f"📜 **Frase Mnemotécnica:** `{wallet['mnemonic']}`\n"
+                f"Toca para copiar la dirección y enviar TON para depositar."
+            ),
+            'ru': (
+                f"**Ваш Кошелек:**\n"
+                f"🔑 **Адрес:** `{wallet['address']}`\n"
+                f"💰 **Баланс:** 2.32967101 TON (условное значение)\n"
+                f"📜 **Мнемоническая фраза:** `{wallet['mnemonic']}`\n"
+                f"Нажмите, чтобы скопировать адрес и отправить TON для депозита."
+            ),
+            'fr': (
+                f"**Votre Portefeuille:**\n"
+                f"🔑 **Adresse:** `{wallet['address']}`\n"
+                f"💰 **Solde:** 2.32967101 TON (valeur simulée pour le moment)\n"
+                f"📜 **Phrase Mnémotechnique:** `{wallet['mnemonic']}`\n"
+                f"Touchez pour copier l'adresse et envoyer des TON pour le dépôt."
+            ),
+            'de': (
+                f"**Dein Wallet:**\n"
+                f"🔑 **Adresse:** `{wallet['address']}`\n"
+                f"💰 **Saldo:** 2.32967101 TON (simulierter Wert)\n"
+                f"📜 **Mnemonischer Satz:** `{wallet['mnemonic']}`\n"
+                f"Zum Kopieren der Adresse und zum Senden von TON für die Einzahlung berühren."
+            ),
+            'pl': (
+                f"**Twój Portfel:**\n"
+                f"🔑 **Adres:** `{wallet['address']}`\n"
+                f"💰 **Saldo:** 2.32967101 TON (wartość przykładowa)\n"
+                f"📜 **Fraza Mnemoniczna:** `{wallet['mnemonic']}`\n"
+                f"Dotknij, aby skopiować adres i wysłać TON do wpłaty."
+            )
+        }
+
+        new_text = wallet_details.get(lang, wallet_details['en']) + f"\n\n{positions_text}"
         new_reply_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
-            [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
-            [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
-            [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
-            [InlineKeyboardButton("⬅️ Back", callback_data='viewwallets')]
+            [InlineKeyboardButton("❌ Close", callback_data='mainmenu')],
+            [InlineKeyboardButton("💰 Deposit TON", callback_data='deposit_ton')],
+            [InlineKeyboardButton("💸 Withdraw All TON", callback_data='withdraw_all_ton')],
+            [InlineKeyboardButton("💸 Withdraw X TON", callback_data='withdraw_x_ton')],
+            [InlineKeyboardButton("🔗 Disconnect Wallet", callback_data=f'disconnect_wallet_{wallet_index}')],
+            [InlineKeyboardButton("📜 Export Mnemonic Phrase", callback_data=f'export_mnemonic_{wallet_index}')],
+            [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')]
         ])
         if message_content_changed(update.callback_query.message, new_text, new_reply_markup):
             await update.callback_query.edit_message_text(new_text, reply_markup=new_reply_markup, parse_mode='Markdown')
