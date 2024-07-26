@@ -160,7 +160,8 @@ async def generate_and_store_wallet(update: Update, context: ContextTypes.DEFAUL
         user_wallets[user_id] = []
     user_wallets[user_id].append({
         "address": wallet_address,
-        "mnemonic": mnemonic
+        "mnemonic": mnemonic,
+        "positions": {}  # Initialize empty positions
     })
 
     # Get the index of the newly created wallet
@@ -212,9 +213,17 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
     if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
         wallet = user_wallets[user_id][wallet_index]
         wallet_info = wallet
+
+
+        # Prepare positions text
+        positions_text = "\n".join([f"{coin}: {amount} TON" for coin, amount in wallet["positions"].items()])
+        if not positions_text:
+            positions_text = "No positions added yet."
+
+
         new_text = (
             f"{get_welcome_message(wallet_info)}\n\n"
-            f"⬅️ **Options:**"
+            f"💼 **Your Positions:**\n{positions_text}\n\n"
         )
         new_reply_markup = InlineKeyboardMarkup([
             [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
@@ -248,6 +257,33 @@ async def manage_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wall
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
+
+# Function to add a position to a wallet
+async def add_position(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.message.from_user.id
+    try:
+        wallet_index = int(context.args[0])
+        coin = context.args[1]
+        amount = float(context.args[2])
+
+        if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
+            wallet = user_wallets[user_id][wallet_index]
+            if coin in wallet["positions"]:
+                wallet["positions"][coin] += amount
+            else:
+                wallet["positions"][coin] = amount
+            await update.message.reply_text(f"Added {amount} TON to {coin} position.")
+        else:
+            await update.message.reply_text("Invalid wallet index.")
+
+    except (IndexError, ValueError):
+        await update.message.reply_text("Usage: /addposition <wallet_index> <coin> <amount>")
+
+# Function to handle the /addposition command
+async def add_position_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await add_position(update, context)
+
+
 
 # Function to delete a specific wallet
 async def delete_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: str) -> None:
@@ -374,6 +410,7 @@ def main() -> None:
     application.add_handler(CommandHandler('buy', buy))
     application.add_handler(CommandHandler('sell', sell))
     application.add_handler(CommandHandler('connect', connect))
+    application.add_handler(CommandHandler('addposition', add_position_command))
     application.add_handler(CallbackQueryHandler(button))
 
     application.run_polling()
