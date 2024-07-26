@@ -252,8 +252,7 @@ async def manage_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wall
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.callback_query.edit_message_text(
-            f"{get_welcome_message(wallet_info)}\n\n"
-            f"🔧 **Manage Wallet Options:**",
+            f"{get_welcome_message(wallet_info)}\n\n",
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
