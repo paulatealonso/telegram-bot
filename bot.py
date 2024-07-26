@@ -220,16 +220,15 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
         wallet = user_wallets[user_id][wallet_index]
         wallet_info = wallet
 
-
         # Prepare positions text
         positions_text = "\n".join([f"{coin}: {amount} TON" for coin, amount in wallet["positions"].items()])
         if not positions_text:
             positions_text = "No positions added yet."
 
-
         new_text = (
             f"{get_welcome_message(wallet_info)}\n\n"
             f"💼 **Your Positions:**\n{positions_text}\n\n"
+            f"⬅️ **Options:**"
         )
         new_reply_markup = InlineKeyboardMarkup([
             [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
@@ -258,7 +257,8 @@ async def manage_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wall
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.callback_query.edit_message_text(
-            f"{get_welcome_message(wallet_info)}\n\n",
+            f"{get_welcome_message(wallet_info)}\n\n"
+            f"🔧 **Manage Wallet Options:**",
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
@@ -288,32 +288,19 @@ async def add_position(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def add_position_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await add_position(update, context)
 
-
-
 # Function to delete a specific wallet
 async def delete_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: str) -> None:
-    if update.callback_query:
-        user_id = update.callback_query.from_user.id
-        wallet_index = int(wallet_index)
-        
-        if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
-            # Remove the wallet from the list
-            del user_wallets[user_id][wallet_index]
-
-            # If the user has no more wallets, delete the user entry
-            if not user_wallets[user_id]:
-                del user_wallets[user_id]
-                # Redirect to the main menu as no wallets are left
-                await start(update.callback_query, context)
-            else:
-                # Show the list of remaining wallets
-                await view_wallets(update.callback_query, context)
+    user_id = update.callback_query.from_user.id
+    wallet_index = int(wallet_index)
+    if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
+        del user_wallets[user_id][wallet_index]
+        if not user_wallets[user_id]:
+            del user_wallets[user_id]
+            # Redirect to the main menu as no wallets are left
+            await start(update, context)
         else:
-            await update.callback_query.edit_message_text("Invalid wallet index. Please select a valid wallet.")
-    else:
-        await update.callback_query.answer("This action cannot be performed directly from a message update.")
-
-
+            # Show the list of remaining wallets
+            await view_wallets(update, context)
 
 # Function to connect an existing wallet
 async def connect_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -330,13 +317,13 @@ async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             user_wallets[user_id] = []
         user_wallets[user_id].append({
             "address": wallet_address,
-            "mnemonic": seed_phrase
+            "mnemonic": seed_phrase,
+            "positions": {}  # Initialize empty positions
         })
         await update.message.reply_text(f"Wallet `{wallet_address}` connected successfully.", parse_mode='Markdown')
         await send_main_menu(update.message, user_id)
     except IndexError:
         await update.message.reply_text("Usage: /connect <wallet_address> <seed_phrase>")
-
 
 # Help function
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -359,7 +346,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_text(help_text, reply_markup=reply_markup)
     elif update.callback_query:
         await update.callback_query.edit_message_text(help_text, reply_markup=reply_markup)
-
 
 # Function to buy TON coins
 async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
