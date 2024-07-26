@@ -45,7 +45,13 @@ def get_welcome_message(wallet_info=None) -> str:
 
 # Start function
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.message.from_user.id
+    if update.message:
+        user_id = update.message.from_user.id
+    elif update.callback_query:
+        user_id = update.callback_query.from_user.id
+    else:
+        return
+
     if user_id in user_wallets and user_wallets[user_id]:
         wallet_info = user_wallets[user_id][-1]
         welcome_message = get_welcome_message(wallet_info)
@@ -64,7 +70,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
+    if update.message:
+        await update.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
+    elif update.callback_query:
+        await update.callback_query.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
+
 
 # Home function
 async def home(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -197,14 +207,9 @@ async def view_wallets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         reply_markup = InlineKeyboardMarkup(wallet_buttons)
         await update.callback_query.edit_message_text(welcome_message + "\n\nYour Wallets:", reply_markup=reply_markup, parse_mode='Markdown')
     else:
-        welcome_message = get_welcome_message()
-        keyboard = [
-            [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
-            [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
-            [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')],
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.callback_query.edit_message_text(welcome_message + "\n\nYou don't have any wallets yet. Use the options to create or connect a wallet.", reply_markup=reply_markup, parse_mode='Markdown')
+        # Handle the case where no wallets are present
+        await start(update, context)
+
 
 # Function to view a specific wallet
 async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: str) -> None:
@@ -286,13 +291,28 @@ async def add_position_command(update: Update, context: ContextTypes.DEFAULT_TYP
 
 # Function to delete a specific wallet
 async def delete_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: str) -> None:
-    user_id = update.callback_query.from_user.id
-    wallet_index = int(wallet_index)
-    if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
-        del user_wallets[user_id][wallet_index]
-        if not user_wallets[user_id]:
-            del user_wallets[user_id]
-        await view_wallets(update, context)
+    if update.callback_query:
+        user_id = update.callback_query.from_user.id
+        wallet_index = int(wallet_index)
+        
+        if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
+            # Remove the wallet from the list
+            del user_wallets[user_id][wallet_index]
+
+            # If the user has no more wallets, delete the user entry
+            if not user_wallets[user_id]:
+                del user_wallets[user_id]
+                # Redirect to the main menu as no wallets are left
+                await start(update.callback_query, context)
+            else:
+                # Show the list of remaining wallets
+                await view_wallets(update.callback_query, context)
+        else:
+            await update.callback_query.edit_message_text("Invalid wallet index. Please select a valid wallet.")
+    else:
+        await update.callback_query.answer("This action cannot be performed directly from a message update.")
+
+
 
 # Function to connect an existing wallet
 async def connect_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
