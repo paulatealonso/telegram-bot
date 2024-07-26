@@ -33,7 +33,7 @@ def get_welcome_message(wallet_info=None) -> str:
         "🎉 **Welcome to TON Call Secure Bot!** 🎉\n\n"
         "🔒 This bot helps you manage your TON wallets securely.\n"
         "💼 You can generate, view, and connect wallets, and perform transactions.\n\n"
-        "🌐 [TON Call Secure Bot](https://web.telegram.org/k/#@HigherTonBot)\n\n"
+        "🌐 [TON Call Secure](https://t.me/TONCALLSECURE)\n\n"
         "Please choose an option to get started:"
     )
     if wallet_info:
@@ -228,7 +228,6 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
         new_text = (
             f"{get_welcome_message(wallet_info)}\n\n"
             f"💼 **Your Positions:**\n{positions_text}\n\n"
-            f"⬅️ **Options:**"
         )
         new_reply_markup = InlineKeyboardMarkup([
             [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
