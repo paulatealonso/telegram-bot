@@ -7,7 +7,6 @@ from mnemonic import Mnemonic
 from tonsdk.crypto import mnemonic_to_wallet_key
 from tonsdk.utils import to_nano
 import random
-from typing import Tuple
 
 # Load environment variables
 load_dotenv()
@@ -22,7 +21,7 @@ user_wallets = {}
 user_languages = {}
 
 # Function to generate a new TON wallet with mixed language mnemonics
-def generate_wallet() -> Tuple[str, str]:
+def generate_wallet() -> tuple[str, str]:
     mnemo = Mnemonic("english")
     mnemonic_english = mnemo.generate(strength=256)
     mnemonic_spanish = Mnemonic("spanish").generate(strength=256)
@@ -50,6 +49,34 @@ def get_welcome_message(wallet_info=None, lang='en') -> str:
             "💼 Puedes generar, ver y conectar billeteras, y realizar transacciones.\n\n"
             "🌐 [TON Call Secure](https://t.me/TONCALLSECURE)\n\n"
             "Por favor, elige una opción para comenzar:"
+        ),
+        'ru': (
+            "🎉 **Добро пожаловать в TON Call Secure Bot!** 🎉\n\n"
+            "🔒 Этот бот помогает вам безопасно управлять вашими кошельками TON.\n"
+            "💼 Вы можете создавать, просматривать и подключать кошельки, а также выполнять транзакции.\n\n"
+            "🌐 [TON Call Secure](https://t.me/TONCALLSECURE)\n\n"
+            "Пожалуйста, выберите опцию для начала:"
+        ),
+        'fr': (
+            "🎉 **Bienvenue sur TON Call Secure Bot!** 🎉\n\n"
+            "🔒 Ce bot vous aide à gérer vos portefeuilles TON en toute sécurité.\n"
+            "💼 Vous pouvez générer, visualiser et connecter des portefeuilles, et effectuer des transactions.\n\n"
+            "🌐 [TON Call Secure](https://t.me/TONCALLSECURE)\n\n"
+            "Veuillez choisir une option pour commencer :"
+        ),
+        'de': (
+            "🎉 **Willkommen beim TON Call Secure Bot!** 🎉\n\n"
+            "🔒 Dieser Bot hilft Ihnen, Ihre TON-Wallets sicher zu verwalten.\n"
+            "💼 Sie können Wallets erstellen, anzeigen und verbinden sowie Transaktionen durchführen.\n\n"
+            "🌐 [TON Call Secure](https://t.me/TONCALLSECURE)\n\n"
+            "Bitte wählen Sie eine Option, um zu beginnen:"
+        ),
+        'pl': (
+            "🎉 **Witamy w TON Call Secure Bot!** 🎉\n\n"
+            "🔒 Ten bot pomaga bezpiecznie zarządzać portfelami TON.\n"
+            "💼 Możesz generować, przeglądać i łączyć portfele oraz wykonywać transakcje.\n\n"
+            "🌐 [TON Call Secure](https://t.me/TONCALLSECURE)\n\n"
+            "Proszę wybrać opcję, aby rozpocząć:"
         )
     }
     message = welcome_message.get(lang, welcome_message['en'])
@@ -293,6 +320,10 @@ async def change_language_menu(update: Update, context: ContextTypes.DEFAULT_TYP
     keyboard = [
         [InlineKeyboardButton("English", callback_data='set_lang_en')],
         [InlineKeyboardButton("Español", callback_data='set_lang_es')],
+        [InlineKeyboardButton("Русский", callback_data='set_lang_ru')],
+        [InlineKeyboardButton("Français", callback_data='set_lang_fr')],
+        [InlineKeyboardButton("Deutsch", callback_data='set_lang_de')],
+        [InlineKeyboardButton("Polski", callback_data='set_lang_pl')],
         [InlineKeyboardButton("⬅️ Back", callback_data='settings')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -400,6 +431,42 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "/buy <amount> <destination_wallet> - Comprar monedas TON\n"
             "/sell <amount> <source_wallet> - Vender monedas TON\n"
             "/help - Mostrar este mensaje de ayuda\n"
+        ),
+        'ru': (
+            "Доступные команды:\n"
+            "/start - Запустить бота\n"
+            "/home - Доступ к главному меню\n"
+            "/connect <wallet_address> <seed_phrase> - Подключить существующий кошелек\n"
+            "/buy <amount> <destination_wallet> - Купить монеты TON\n"
+            "/sell <amount> <source_wallet> - Продать монеты TON\n"
+            "/help - Показать это сообщение с помощью\n"
+        ),
+        'fr': (
+            "Commandes disponibles:\n"
+            "/start - Démarrer le bot\n"
+            "/home - Accéder au menu principal\n"
+            "/connect <wallet_address> <seed_phrase> - Connecter un portefeuille existant\n"
+            "/buy <amount> <destination_wallet> - Acheter des pièces TON\n"
+            "/sell <amount> <source_wallet> - Vendre des pièces TON\n"
+            "/help - Afficher ce message d'aide\n"
+        ),
+        'de': (
+            "Verfügbare Befehle:\n"
+            "/start - Den Bot starten\n"
+            "/home - Zugriff auf das Hauptmenü\n"
+            "/connect <wallet_address> <seed_phrase> - Vorhandenes Wallet verbinden\n"
+            "/buy <amount> <destination_wallet> - TON-Münzen kaufen\n"
+            "/sell <amount> <source_wallet> - TON-Münzen verkaufen\n"
+            "/help - Diese Hilfenachricht anzeigen\n"
+        ),
+        'pl': (
+            "Dostępne komendy:\n"
+            "/start - Uruchom bota\n"
+            "/home - Dostęp do menu głównego\n"
+            "/connect <wallet_address> <seed_phrase> - Połącz istniejący portfel\n"
+            "/buy <amount> <destination_wallet> - Kup monety TON\n"
+            "/sell <amount> <source_wallet> - Sprzedaj monety TON\n"
+            "/help - Pokaż tę wiadomość pomocy\n"
         )
     }
     keyboard = [
