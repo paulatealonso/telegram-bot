@@ -59,6 +59,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
             [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
             [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
+            [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
         ]
     else:
@@ -66,6 +67,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         keyboard = [
             [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
             [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
+            [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
         ]
 
@@ -90,6 +92,7 @@ async def send_main_menu(message, user_id: int) -> None:
             [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
             [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
             [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
+            [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
         ]
     else:
@@ -97,6 +100,7 @@ async def send_main_menu(message, user_id: int) -> None:
         keyboard = [
             [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
             [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
+            [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
         ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -137,7 +141,10 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await manage_wallet(update, context, command.split('_')[1])
     elif command.startswith('deletewallet_'):
         await delete_wallet(update, context, command.split('_')[1])
-
+    elif command == 'settings':
+        await settings_menu(update, context)
+    elif command == 'change_language':
+        await change_language_menu(update, context)
 
 # Function to display wallets menu
 async def wallets_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -211,7 +218,6 @@ async def view_wallets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         # Handle the case where no wallets are present
         await start(update, context)
 
-
 # Function to view a specific wallet
 async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: str) -> None:
     user_id = update.callback_query.from_user.id
@@ -228,6 +234,7 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
         new_text = (
             f"{get_welcome_message(wallet_info)}\n\n"
             f"💼 **Your Positions:**\n{positions_text}\n\n"
+            f"⬅️ **Options:**"
         )
         new_reply_markup = InlineKeyboardMarkup([
             [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
@@ -324,6 +331,31 @@ async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     except IndexError:
         await update.message.reply_text("Usage: /connect <wallet_address> <seed_phrase>")
 
+# Function to show settings menu
+async def settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.callback_query.from_user.id
+    keyboard = [
+        [InlineKeyboardButton("🌐 Change Language", callback_data='change_language')]
+    ]
+
+    if user_id in user_wallets and user_wallets[user_id]:
+        keyboard.insert(0, [InlineKeyboardButton("❌ Delete Wallet", callback_data='deletewallet')])
+
+    keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.edit_message_text("⚙️ **Settings**", reply_markup=reply_markup, parse_mode='Markdown')
+
+# Function to show change language menu
+async def change_language_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    keyboard = [
+        [InlineKeyboardButton("English", callback_data='set_lang_en')],
+        [InlineKeyboardButton("Español", callback_data='set_lang_es')],
+        [InlineKeyboardButton("⬅️ Back", callback_data='settings')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.edit_message_text("🌐 **Select Language**", reply_markup=reply_markup, parse_mode='Markdown')
+
 # Help function
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_text = (
@@ -333,6 +365,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "/connect <wallet_address> <seed_phrase> - Connect an existing wallet\n"
         "/buy <amount> <destination_wallet> - Buy TON coins\n"
         "/sell <amount> <source_wallet> - Sell TON coins\n"
+        "/addposition <wallet_index> <coin> <amount> - Add position to wallet\n"
         "/help - Show this help message\n"
     )
 
@@ -405,7 +438,7 @@ async def sell(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "private_key": TON_PRIVATE_KEY
         })
 
-        if response.status_code == 200:
+        if (response.status_code == 200):
             await update.message.reply_text(f'Transaction successful: {response.json()}')
         else:
             await update.message.reply_text(f'Error: {response.json()}')
