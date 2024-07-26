@@ -82,7 +82,7 @@ def get_welcome_message(wallet_info=None, lang='en') -> str:
     message = welcome_message.get(lang, welcome_message['en'])
     if wallet_info:
         message += (
-            f"\n\n🔑 **Your Wallet Address:** `{wallet_info['address']}`\n"
+            f"\n\n🔑 **Your Wallet Address:** {wallet_info['address']}\n"
             f"💰 **Balance:** 0.0 TON (dummy value for now)\n"
         )
     return message
@@ -102,11 +102,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         wallet_info = user_wallets[user_id][-1]
         welcome_message = get_welcome_message(wallet_info, lang)
         keyboard = [
-            [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
-            [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
-            [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
+            [InlineKeyboardButton("💸 Deposit TON", callback_data='deposit')],
+            [InlineKeyboardButton("💸 Withdraw All TON", callback_data='withdraw_all')],
+            [InlineKeyboardButton("💸 Withdraw X TON", callback_data='withdraw_x')],
+            [InlineKeyboardButton("🔗 Disconnect Wallet", callback_data='disconnect')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
             [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
+            [InlineKeyboardButton("📜 Wallets", callback_data='wallets')]
         ]
     else:
         welcome_message = get_welcome_message(lang=lang)
@@ -123,7 +125,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     elif update.callback_query:
         await update.callback_query.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
 
-
 # Home function
 async def home(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
@@ -136,11 +137,13 @@ async def send_main_menu(message, user_id: int) -> None:
         wallet_info = user_wallets[user_id][-1]
         welcome_message = get_welcome_message(wallet_info, lang)
         keyboard = [
-            [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
-            [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
-            [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
+            [InlineKeyboardButton("💸 Deposit TON", callback_data='deposit')],
+            [InlineKeyboardButton("💸 Withdraw All TON", callback_data='withdraw_all')],
+            [InlineKeyboardButton("💸 Withdraw X TON", callback_data='withdraw_x')],
+            [InlineKeyboardButton("🔗 Disconnect Wallet", callback_data='disconnect')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
             [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
+            [InlineKeyboardButton("📜 Wallets", callback_data='wallets')]
         ]
     else:
         welcome_message = get_welcome_message(lang=lang)
@@ -167,10 +170,14 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await wallets_menu(update, context)
     elif command == 'connectwallet':
         await connect_wallet(update, context)
-    elif command == 'buy':
-        await query.edit_message_text("Use the command /buy <amount> <destination_wallet> to buy TON coins.")
-    elif command == 'sell':
-        await query.edit_message_text("Use the command /sell <amount> <source_wallet> to sell TON coins.")
+    elif command == 'deposit':
+        await deposit_ton(update, context)
+    elif command == 'withdraw_all':
+        await withdraw_all_ton(update, context)
+    elif command == 'withdraw_x':
+        await withdraw_x_ton(update, context)
+    elif command == 'disconnect':
+        await disconnect_wallet(update, context)
     elif command == 'help':
         await help_command(update, context)
     elif command == 'viewwallets':
@@ -238,8 +245,8 @@ async def generate_and_store_wallet(update: Update, context: ContextTypes.DEFAUL
     # Prepare the response message
     response_message = (
         f"🎉 **New Wallet Generated!** 🎉\n\n"
-        f"🔑 **Address:** `{wallet_address}`\n\n"
-        f"📝 **Seed Phrase:** `{mnemonic}`\n\n"
+        f"🔑 **Address:** {wallet_address}\n\n"
+        f"📝 **Seed Phrase:** {mnemonic}\n\n"
         f"⚠️ **Important Security Notice:**\n"
         f"1️⃣ **Write down your seed phrase on paper.** Do not save it digitally.\n"
         f"2️⃣ **Never share your seed phrase with anyone.** It grants full access to your wallet.\n"
@@ -269,7 +276,6 @@ async def view_wallets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         # Handle the case where no wallets are present
         await start(update, context)
 
-
 # Function to view a specific wallet
 async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: str) -> None:
     user_id = update.callback_query.from_user.id
@@ -289,8 +295,9 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
             f"💼 **Your Positions:**\n{positions_text}\n\n"
         )
         new_reply_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("💰 Buy TON", callback_data='buy')],
-            [InlineKeyboardButton("💸 Sell TON", callback_data='sell')],
+            [InlineKeyboardButton("💸 Deposit TON", callback_data='deposit')],
+            [InlineKeyboardButton("💸 Withdraw All TON", callback_data='withdraw_all')],
+            [InlineKeyboardButton("💸 Withdraw X TON", callback_data='withdraw_x')],
             [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
             [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
             [InlineKeyboardButton("⬅️ Back", callback_data='viewwallets')]
@@ -388,7 +395,7 @@ async def delete_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wall
 
 # Function to connect an existing wallet
 async def connect_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.callback_query.edit_message_text("Please send your wallet address and seed phrase in the following format:\n`/connect <wallet_address> <seed_phrase>`", parse_mode='Markdown')
+    await update.callback_query.edit_message_text("Please send your wallet address and seed phrase in the following format:\n/connect <wallet_address> <seed_phrase>", parse_mode='Markdown')
 
 # Function to handle the /connect command
 async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -404,10 +411,39 @@ async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "mnemonic": seed_phrase,
             "positions": {}  # Initialize empty positions
         })
-        await update.message.reply_text(f"Wallet `{wallet_address}` connected successfully.", parse_mode='Markdown')
+        await update.message.reply_text(f"Wallet {wallet_address} connected successfully.", parse_mode='Markdown')
         await send_main_menu(update.message, user_id)
     except IndexError:
         await update.message.reply_text("Usage: /connect <wallet_address> <seed_phrase>")
+
+# Function to disconnect the wallet
+async def disconnect_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.callback_query.from_user.id
+    if user_id in user_wallets:
+        user_wallets.pop(user_id, None)
+        await update.callback_query.edit_message_text("Your wallet has been disconnected.")
+    await send_main_menu(update.callback_query.message, user_id)
+
+# Function to deposit TON coins
+async def deposit_ton(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.callback_query.edit_message_text(
+        "Please send the amount of TON and the wallet address in the following format:\n`/deposit <amount> <wallet_address>`",
+        parse_mode='Markdown'
+    )
+
+# Function to withdraw all TON coins
+async def withdraw_all_ton(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.callback_query.edit_message_text(
+        "Please send the destination wallet address in the following format:\n`/withdraw_all <wallet_address>`",
+        parse_mode='Markdown'
+    )
+
+# Function to withdraw a specific amount of TON coins
+async def withdraw_x_ton(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.callback_query.edit_message_text(
+        "Please send the amount and the destination wallet address in the following format:\n`/withdraw_x <amount> <wallet_address>`",
+        parse_mode='Markdown'
+    )
 
 # Help function
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -419,8 +455,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "/start - Start the bot\n"
             "/home - Access the main menu\n"
             "/connect <wallet_address> <seed_phrase> - Connect an existing wallet\n"
-            "/buy <amount> <destination_wallet> - Buy TON coins\n"
-            "/sell <amount> <source_wallet> - Sell TON coins\n"
+            "/deposit <amount> <wallet_address> - Deposit TON coins\n"
+            "/withdraw_all <wallet_address> - Withdraw all TON coins\n"
+            "/withdraw_x <amount> <wallet_address> - Withdraw specific amount of TON coins\n"
             "/help - Show this help message\n"
         ),
         'es': (
@@ -428,8 +465,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "/start - Iniciar el bot\n"
             "/home - Acceder al menú principal\n"
             "/connect <wallet_address> <seed_phrase> - Conectar una billetera existente\n"
-            "/buy <amount> <destination_wallet> - Comprar monedas TON\n"
-            "/sell <amount> <source_wallet> - Vender monedas TON\n"
+            "/deposit <amount> <wallet_address> - Depositar monedas TON\n"
+            "/withdraw_all <wallet_address> - Retirar todas las monedas TON\n"
+            "/withdraw_x <amount> <wallet_address> - Retirar una cantidad específica de monedas TON\n"
             "/help - Mostrar este mensaje de ayuda\n"
         ),
         'ru': (
@@ -437,8 +475,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "/start - Запустить бота\n"
             "/home - Доступ к главному меню\n"
             "/connect <wallet_address> <seed_phrase> - Подключить существующий кошелек\n"
-            "/buy <amount> <destination_wallet> - Купить монеты TON\n"
-            "/sell <amount> <source_wallet> - Продать монеты TON\n"
+            "/deposit <amount> <wallet_address> - Внести монеты TON\n"
+            "/withdraw_all <wallet_address> - Вывести все монеты TON\n"
+            "/withdraw_x <amount> <wallet_address> - Вывести определенное количество монет TON\n"
             "/help - Показать это сообщение с помощью\n"
         ),
         'fr': (
@@ -446,8 +485,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "/start - Démarrer le bot\n"
             "/home - Accéder au menu principal\n"
             "/connect <wallet_address> <seed_phrase> - Connecter un portefeuille existant\n"
-            "/buy <amount> <destination_wallet> - Acheter des pièces TON\n"
-            "/sell <amount> <source_wallet> - Vendre des pièces TON\n"
+            "/deposit <amount> <wallet_address> - Déposer des pièces TON\n"
+            "/withdraw_all <wallet_address> - Retirer toutes les pièces TON\n"
+            "/withdraw_x <amount> <wallet_address> - Retirer une quantité spécifique de pièces TON\n"
             "/help - Afficher ce message d'aide\n"
         ),
         'de': (
@@ -455,8 +495,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "/start - Den Bot starten\n"
             "/home - Zugriff auf das Hauptmenü\n"
             "/connect <wallet_address> <seed_phrase> - Vorhandenes Wallet verbinden\n"
-            "/buy <amount> <destination_wallet> - TON-Münzen kaufen\n"
-            "/sell <amount> <source_wallet> - TON-Münzen verkaufen\n"
+            "/deposit <amount> <wallet_address> - TON-Münzen einzahlen\n"
+            "/withdraw_all <wallet_address> - Alle TON-Münzen abheben\n"
+            "/withdraw_x <amount> <wallet_address> - Eine bestimmte Menge an TON-Münzen abheben\n"
             "/help - Diese Hilfenachricht anzeigen\n"
         ),
         'pl': (
@@ -464,8 +505,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "/start - Uruchom bota\n"
             "/home - Dostęp do menu głównego\n"
             "/connect <wallet_address> <seed_phrase> - Połącz istniejący portfel\n"
-            "/buy <amount> <destination_wallet> - Kup monety TON\n"
-            "/sell <amount> <source_wallet> - Sprzedaj monety TON\n"
+            "/deposit <amount> <wallet_address> - Wpłać monety TON\n"
+            "/withdraw_all <wallet_address> - Wypłać wszystkie monety TON\n"
+            "/withdraw_x <amount> <wallet_address> - Wypłać określoną ilość monet TON\n"
             "/help - Pokaż tę wiadomość pomocy\n"
         )
     }
@@ -480,81 +522,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     elif update.callback_query:
         await update.callback_query.edit_message_text(message, reply_markup=reply_markup)
 
-# Function to buy TON coins
-async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if len(context.args) < 2:
-        await update.message.reply_text('Usage: /buy <amount> <destination_wallet>')
-        return
-
-    try:
-        amount = float(context.args[0])
-        user_wallet = context.args[1]
-        fee = amount * 0.03  # 3% fee
-        amount_after_fee = amount - fee
-
-        headers = {
-            'Authorization': f'Bearer {TON_API_KEY}',
-            'Content-Type': 'application/json'
-        }
-
-        # Send the amount after deducting the fee to the user
-        response = requests.post(TONCENTER_API_URL + "/sendTransaction", headers=headers, json={
-            "from": TON_WALLET_ADDRESS,
-            "to": user_wallet,
-            "value": to_nano(amount_after_fee, "ton"),
-            "private_key": TON_PRIVATE_KEY
-        })
-
-        if response.status_code == 200:
-            await update.message.reply_text(f'Transaction successful: {response.json()}')
-        else:
-            await update.message.reply_text(f'Error: {response.json()}')
-
-    except Exception as e:
-        await update.message.reply_text(f'Error: {str(e)}')
-        print(f'Error: {str(e)}')
-
-# Function to sell TON coins
-async def sell(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if len(context.args) < 2:
-        await update.message.reply_text('Usage: /sell <amount> <source_wallet>')
-        return
-
-    try:
-        amount = float(context.args[0])
-        user_wallet = context.args[1]
-        fee = amount * 0.03  # 3% fee
-        amount_after_fee = amount - fee
-
-        headers = {
-            'Authorization': f'Bearer {TON_API_KEY}',
-            'Content-Type': 'application/json'
-        }
-
-        # Receive the amount from the user to your wallet
-        response = requests.post(TONCENTER_API_URL + "/receiveTransaction", headers=headers, json={
-            "from": user_wallet,
-            "to": TON_WALLET_ADDRESS,
-            "value": to_nano(amount_after_fee, "ton"),
-            "private_key": TON_PRIVATE_KEY
-        })
-
-        if response.status_code == 200:
-            await update.message.reply_text(f'Transaction successful: {response.json()}')
-        else:
-            await update.message.reply_text(f'Error: {response.json()}')
-
-    except Exception as e:
-        await update.message.reply_text(f'Error: {str(e)}')
-
 def main() -> None:
     application = Application.builder().token(TELEGRAM_API_KEY).build()
 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('home', home))
     application.add_handler(CommandHandler('help', help_command))
-    application.add_handler(CommandHandler('buy', buy))
-    application.add_handler(CommandHandler('sell', sell))
     application.add_handler(CommandHandler('connect', connect))
     application.add_handler(CommandHandler('addposition', add_position_command))
     application.add_handler(CallbackQueryHandler(button))
@@ -563,3 +536,4 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+
