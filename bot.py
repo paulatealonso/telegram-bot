@@ -7,6 +7,7 @@ from mnemonic import Mnemonic
 from tonsdk.crypto import mnemonic_to_wallet_key
 from tonsdk.utils import to_nano
 import random
+from typing import Tuple
 
 # Load environment variables
 load_dotenv()
@@ -21,7 +22,7 @@ user_wallets = {}
 user_languages = {}
 
 # Function to generate a new TON wallet with mixed language mnemonics
-def generate_wallet() -> (str, str):
+def generate_wallet() -> Tuple[str, str]:
     mnemo = Mnemonic("english")
     mnemonic_english = mnemo.generate(strength=256)
     mnemonic_spanish = Mnemonic("spanish").generate(strength=256)
