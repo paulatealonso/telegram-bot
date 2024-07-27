@@ -164,7 +164,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await wallets_menu(update, context)
     elif command == 'connectwallet':
         await connect_wallet(update, context)
-    elif command == 'sell_manage':
+    elif command.startswith('sell_manage_'):
         await sell_manage_menu(update, context)
     elif command == 'deposit':
         await deposit_ton(update, context)
@@ -185,7 +185,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     elif command.startswith('viewlastwallet_'):
         await view_wallet(update, context, command.split('_')[1])
     elif command == 'mainmenu':
-        user_id = update.callback_query.from_user.id
+        user_id = query.from_user.id
         await send_main_menu(query.message, user_id)
     elif command.startswith('deletewallet_'):
         await delete_wallet(update, context, command.split('_')[1])
@@ -293,17 +293,14 @@ async def view_wallets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     user_id = update.callback_query.from_user.id
     lang = user_languages.get(user_id, 'en')
     if user_id in user_wallets and user_wallets[user_id]:
-        wallet_info = user_wallets[user_id][-1]
-        welcome_message = get_welcome_message(wallet_info, lang)
         wallets = user_wallets[user_id]
         wallet_buttons = [
             [InlineKeyboardButton(f"Wallet {i+1}", callback_data=f'viewwallet_{i}')] for i in range(len(wallets))
         ]
         wallet_buttons.append([InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')])
         reply_markup = InlineKeyboardMarkup(wallet_buttons)
-        await update.callback_query.edit_message_text(welcome_message + "\n\nYour Wallets:", reply_markup=reply_markup, parse_mode='Markdown')
+        await update.callback_query.edit_message_text("Select a wallet to view:", reply_markup=reply_markup, parse_mode='Markdown')
     else:
-        # Handle the case where no wallets are present
         await start(update, context)
 
 # Function to view a specific wallet
@@ -325,15 +322,12 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
             f"💼 **Your Positions:**\n{positions_text}\n\n"
         )
         new_reply_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data='sell_manage')],
+            [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data=f'sell_manage_{wallet_index}')],
             [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
             [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
             [InlineKeyboardButton("⬅️ Back", callback_data='viewwallets')]
         ])
-        if message_content_changed(update.callback_query.message, new_text, new_reply_markup):
-            await update.callback_query.edit_message_text(new_text, reply_markup=new_reply_markup, parse_mode='Markdown')
-        else:
-            await update.callback_query.answer("No changes detected.")
+        await update.callback_query.edit_message_text(new_text, reply_markup=new_reply_markup, parse_mode='Markdown')
     else:
         await update.callback_query.edit_message_text("Invalid wallet index. Please select a valid wallet.")
 
