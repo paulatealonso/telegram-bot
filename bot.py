@@ -208,8 +208,9 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     elif command.startswith('refresh_'):
         wallet_address = command.split('_')[-1]
         await refresh_coin_info(update, context, wallet_address)
-    elif command.startswith('cancel_'):
-        await send_main_menu(update.callback_query.message, update.callback_query.from_user.id)
+    elif command.startswith('back_'):
+        wallet_address = command.split('_')[-1]
+        await handle_back_command(update, context, wallet_address)
 
 # Function to display sell and manage menu
 async def sell_manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: int) -> None:
@@ -356,15 +357,14 @@ async def settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         'de': "⚙️ **Einstellungen**\n\nWählen Sie eine Option, um Ihre Wallet- und Bot-Einstellungen zu konfigurieren.",
         'pl': "⚙️ **Ustawienia**\n\nWybierz opcję, aby skonfigurować portfel i ustawienia bota."
     }
-    keyboard = [
-        [InlineKeyboardButton("🌐 Change Language", callback_data='change_language')],
-        [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
-    ]
+    keyboard = [[InlineKeyboardButton("🌐 Change Language", callback_data='change_language')]]
     
     # Add delete wallet option only if there are wallets
     if user_id in user_wallets and user_wallets[user_id]:
-        keyboard.insert(1, [InlineKeyboardButton("❌ Delete Wallet", callback_data='deletewallet')])
+        keyboard.append([InlineKeyboardButton("❌ Delete Wallet", callback_data='deletewallet')])
 
+    keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')])
+    
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(settings_message.get(lang, settings_message['en']), reply_markup=reply_markup, parse_mode='Markdown')
 
@@ -373,17 +373,17 @@ async def change_language_menu(update: Update, context: ContextTypes.DEFAULT_TYP
     user_id = update.callback_query.from_user.id
     lang = user_languages.get(user_id, 'en')
     language_message = {
-        'en': "🌐 **Change Language**\n\nSelect your preferred language:",
-        'es': "🌐 **Cambiar Idioma**\n\nSelecciona tu idioma preferido:",
-        'ru': "🌐 **Изменить язык**\n\nВыберите предпочитаемый язык:",
-        'fr': "🌐 **Changer de langue**\n\nSélectionnez votre langue préférée :",
-        'de': "🌐 **Sprache ändern**\n\nWählen Sie Ihre bevorzugte Sprache:",
-        'pl': "🌐 **Zmień język**\n\nWybierz preferowany język:"
+        'en': "🌐 **Change Language**\n\nSelect your preferred language.",
+        'es': "🌐 **Cambiar Idioma**\n\nSelecciona tu idioma preferido.",
+        'ru': "🌐 **Изменить язык**\n\nВыберите предпочитаемый язык.",
+        'fr': "🌐 **Changer de langue**\n\nSélectionnez votre langue préférée.",
+        'de': "🌐 **Sprache ändern**\n\nWählen Sie Ihre bevorzugte Sprache.",
+        'pl': "🌐 **Zmień język**\n\nWybierz preferowany język."
     }
     keyboard = [
-        [InlineKeyboardButton("🇬🇧 English", callback_data='set_lang_en'), InlineKeyboardButton("🇪🇸 Español", callback_data='set_lang_es')],
-        [InlineKeyboardButton("🇷🇺 Русский", callback_data='set_lang_ru'), InlineKeyboardButton("🇫🇷 Français", callback_data='set_lang_fr')],
-        [InlineKeyboardButton("🇩🇪 Deutsch", callback_data='set_lang_de'), InlineKeyboardButton("🇵🇱 Polski", callback_data='set_lang_pl')],
+        [InlineKeyboardButton("English 🇺🇸", callback_data='set_lang_en'), InlineKeyboardButton("Español 🇪🇸", callback_data='set_lang_es')],
+        [InlineKeyboardButton("Русский 🇷🇺", callback_data='set_lang_ru'), InlineKeyboardButton("Français 🇫🇷", callback_data='set_lang_fr')],
+        [InlineKeyboardButton("Deutsch 🇩🇪", callback_data='set_lang_de'), InlineKeyboardButton("Polski 🇵🇱", callback_data='set_lang_pl')],
         [InlineKeyboardButton("⬅️ Back", callback_data='settings')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -611,13 +611,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         f"💼 **Wallet Balance:** {coin_info['wallet_balance']}\n\n"
         f"👇 **To buy, press one of the buttons below:**"
     )
-    
-    keyboard = [
-        [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{wallet_address}')],
-        [InlineKeyboardButton("$ Buy 1 TON", callback_data=f'buy_1_{wallet_address}'), InlineKeyboardButton("$ Buy 5 TON", callback_data=f'buy_5_{wallet_address}')],
-        [InlineKeyboardButton("$ Buy X TON", callback_data=f'buy_x_{wallet_address}')],
-        [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{wallet_address}'), InlineKeyboardButton("⬅️ Back", callback_data=f'mainmenu')]
-    ]
+
+    if user_id in user_wallets and user_wallets[user_id]:
+        keyboard = [
+            [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{wallet_address}')],
+            [InlineKeyboardButton("$ Buy 1 TON", callback_data=f'buy_1_{wallet_address}'), InlineKeyboardButton("$ Buy 5 TON", callback_data=f'buy_5_{wallet_address}')],
+            [InlineKeyboardButton("$ Buy X TON", callback_data=f'buy_x_{wallet_address}')],
+            [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{wallet_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')],
+            [InlineKeyboardButton("⬅️ Back", callback_data=f'back_{wallet_address}')]
+        ]
+    else:
+        keyboard = [
+            [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{wallet_address}')],
+            [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet'), InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
+            [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{wallet_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')],
+            [InlineKeyboardButton("⬅️ Back", callback_data=f'back_{wallet_address}')]
+        ]
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(response_message, reply_markup=reply_markup, parse_mode='Markdown')
@@ -625,7 +634,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # Function to send chart link
 async def send_chart_link(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_address: str) -> None:
     chart_link = f"https://www.coingecko.com/en/coins/{wallet_address}"
-    keyboard = [[InlineKeyboardButton("⬅️ Back", callback_data=f'buy_{wallet_address}')]]
+    keyboard = [[InlineKeyboardButton("⬅️ Back", callback_data=f'back_{wallet_address}')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
         f"📈 **Chart Link**\n\n[Click here to view the chart]({chart_link})",
@@ -650,10 +659,58 @@ async def handle_buy_command(update: Update, context: ContextTypes.DEFAULT_TYPE,
             parse_mode='Markdown'
         )
 
-# Function to refresh coin info
+# Function to refresh coin information
 async def refresh_coin_info(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_address: str) -> None:
-    # Dummy implementation of refreshing coin info
-    await handle_message(update, context)
+    # Here you would re-fetch the relevant information about the wallet address
+    # For now, let's assume we have re-fetched the data and create a dummy response
+    coin_info = {
+        'address': wallet_address,
+        'price': '0.0000356 TON',
+        'supply': '7.38K',
+        'market_cap': '24.89K',
+        'reserve': '7.38K',
+        'volume': '5.35K',
+        'pooled_ton': '564.47',
+        'wallet_balance': '2.3296710 TON'
+    }
+    
+    # Prepare the response message
+    response_message = (
+        f"📌 **Coin Information**\n\n"
+        f"🔗 **Address:** `{coin_info['address']}`\n"
+        f"💰 **Price:** {coin_info['price']}\n"
+        f"🔄 **Supply:** {coin_info['supply']}\n"
+        f"📊 **Market Cap:** {coin_info['market_cap']}\n"
+        f"💵 **Reserve:** {coin_info['reserve']}\n"
+        f"📈 **Volume (24h):** {coin_info['volume']}\n"
+        f"💸 **Pooled TON:** {coin_info['pooled_ton']}\n"
+        f"💼 **Wallet Balance:** {coin_info['wallet_balance']}\n\n"
+        f"👇 **To buy, press one of the buttons below:**"
+    )
+
+    user_id = update.callback_query.from_user.id
+    if user_id in user_wallets and user_wallets[user_id]:
+        keyboard = [
+            [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{wallet_address}')],
+            [InlineKeyboardButton("$ Buy 1 TON", callback_data=f'buy_1_{wallet_address}'), InlineKeyboardButton("$ Buy 5 TON", callback_data=f'buy_5_{wallet_address}')],
+            [InlineKeyboardButton("$ Buy X TON", callback_data=f'buy_x_{wallet_address}')],
+            [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{wallet_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')],
+            [InlineKeyboardButton("⬅️ Back", callback_data=f'back_{wallet_address}')]
+        ]
+    else:
+        keyboard = [
+            [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{wallet_address}')],
+            [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet'), InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
+            [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{wallet_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')],
+            [InlineKeyboardButton("⬅️ Back", callback_data=f'back_{wallet_address}')]
+        ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.edit_message_text(response_message, reply_markup=reply_markup, parse_mode='Markdown')
+
+# Function to handle back commands
+async def handle_back_command(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_address: str) -> None:
+    await refresh_coin_info(update, context, wallet_address)
 
 def main() -> None:
     application = Application.builder().token(TELEGRAM_API_KEY).build()
