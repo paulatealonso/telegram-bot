@@ -103,6 +103,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         welcome_message = get_welcome_message(wallet_info, lang)
         keyboard = [
             [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data=f'sell_manage_{len(user_wallets[user_id]) - 1}')],
+            [InlineKeyboardButton("🛒 Buy", callback_data='buy')],
             [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
             [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')]
@@ -135,6 +136,7 @@ async def send_main_menu(message, user_id: int) -> None:
         welcome_message = get_welcome_message(wallet_info, lang)
         keyboard = [
             [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data=f'sell_manage_{len(user_wallets[user_id]) - 1}')],
+            [InlineKeyboardButton("🛒 Buy", callback_data='buy')],
             [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
             [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')]
@@ -187,6 +189,8 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await view_wallet(update, context, command.split('_')[1])
     elif command == 'newwallet':
         await generate_and_store_wallet(update, context)
+    elif command == 'buy':
+        await buy_token(update, context)
     elif command == 'mainmenu':
         user_id = query.from_user.id
         await send_main_menu(query.message, user_id)
@@ -234,6 +238,26 @@ async def sell_manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, w
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(full_message, reply_markup=reply_markup, parse_mode='Markdown')
+
+# Function to display buy token menu
+async def buy_token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.callback_query.from_user.id
+    lang = user_languages.get(user_id, 'en')
+    buy_message = {
+        'en': "🛒 **Buy Token:**\n\nTo buy a token, please enter the token address or name.",
+        'es': "🛒 **Comprar Token:**\n\nPara comprar un token, introduce una dirección o nombre del token.",
+        'ru': "🛒 **Купить токен:**\n\nЧтобы купить токен, введите адрес или название токена.",
+        'fr': "🛒 **Acheter un token:**\n\nPour acheter un token, veuillez entrer l'adresse ou le nom du token.",
+        'de': "🛒 **Token kaufen:**\n\nUm einen Token zu kaufen, geben Sie bitte die Token-Adresse oder den Namen ein.",
+        'pl': "🛒 **Kup token:**\n\nAby kupić token, wprowadź adres tokena lub nazwę."
+    }
+    message = buy_message.get(lang, buy_message['en'])
+
+    keyboard = [
+        [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.edit_message_text(message, reply_markup=reply_markup, parse_mode='Markdown')
 
 # Function to display wallets menu
 async def wallets_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
