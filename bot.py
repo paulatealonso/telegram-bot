@@ -1,5 +1,5 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 import requests
 import os
 from dotenv import load_dotenv
@@ -87,35 +87,6 @@ def get_welcome_message(wallet_info=None, lang='en') -> str:
         )
     return message
 
-# Function to get token information message
-def get_token_info(wallet_address: str, lang: str) -> str:
-    # Dummy data for the token information
-    token_info = {
-        'en': (
-            f"🔗 **Token Information** 🔗\n\n"
-            f"🌐 **Address:** `{wallet_address}`\n"
-            f"💵 **Price:** 0.0000356 TON\n"
-            f"✨ **Total Supply:** 7.38K\n"
-            f"📈 **Market Cap:** 24.89K\n"
-            f"💸 **24h Volume:** 5.35K\n"
-            f"🔒 **Pooled TON:** 564.476131812 TON\n"
-            f"💼 **Wallet Balance:** 2.3296710 TON\n\n"
-            f"👇 **To buy, press one of the buttons below:**"
-        ),
-        'es': (
-            f"🔗 **Información del Token** 🔗\n\n"
-            f"🌐 **Dirección:** `{wallet_address}`\n"
-            f"💵 **Precio:** 0.0000356 TON\n"
-            f"✨ **Suministro Total:** 7.38K\n"
-            f"📈 **Capitalización de Mercado:** 24.89K\n"
-            f"💸 **Volumen 24h:** 5.35K\n"
-            f"🔒 **TON en Pool:** 564.476131812 TON\n"
-            f"💼 **Saldo de la Cartera:** 2.3296710 TON\n\n"
-            f"👇 **Para comprar, presiona uno de los botones a continuación:**"
-        )
-    }
-    return token_info.get(lang, token_info['en'])
-
 # Start function
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message:
@@ -183,30 +154,6 @@ async def send_main_menu(message, user_id: int) -> None:
 def message_content_changed(current_message, new_text, new_reply_markup):
     return current_message.text != new_text or current_message.reply_markup != new_reply_markup
 
-# Function to handle text messages
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.message.from_user.id
-    text = update.message.text.strip()
-
-    # Check if the message is a valid wallet address
-    if text.startswith('EQ') and len(text) == 48:
-        lang = user_languages.get(user_id, 'en')
-        token_info_message = get_token_info(text, lang)
-        
-        keyboard = [
-            [InlineKeyboardButton("📊 Chart", callback_data='chart')],
-            [InlineKeyboardButton("🔍 Scan", callback_data='scan')],
-            [InlineKeyboardButton("💸 Buy 1 TON", callback_data='buy_1_ton')],
-            [InlineKeyboardButton("💸 Buy 5 TON", callback_data='buy_5_ton')],
-            [InlineKeyboardButton("💸 Buy X TON", callback_data='buy_x_ton')],
-            [InlineKeyboardButton("🔄 Refresh", callback_data='refresh')],
-            [InlineKeyboardButton("❌ Cancel", callback_data='cancel')],
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(token_info_message, reply_markup=reply_markup, parse_mode='Markdown')
-    else:
-        await update.message.reply_text("Invalid wallet address. Please try again.")
-
 # Callback handler for button presses
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -253,20 +200,11 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await set_language(update, context, command.split('_')[2])
     elif command == 'deletewallet':
         await delete_wallet_menu(update, context)
-    elif command == 'chart':
-        await query.message.reply_text("📊 Here is the chart link: [Chart URL](https://example.com/chart)", parse_mode='Markdown')
-    elif command == 'scan':
-        await query.message.reply_text("🔍 Scanning the token information...")
-    elif command == 'buy_1_ton':
-        await query.message.reply_text("💸 Buying 1 TON...")
-    elif command == 'buy_5_ton':
-        await query.message.reply_text("💸 Buying 5 TON...")
-    elif command == 'buy_x_ton':
-        await query.message.reply_text("💸 Please specify the amount of TON to buy.")
-    elif command == 'refresh':
-        await query.message.reply_text("🔄 Refreshing the token information...")
-    elif command == 'cancel':
-        await query.message.reply_text("❌ Action cancelled.")
+    elif command.startswith('buy_'):
+        await handle_buy_command(update, context, command)
+    elif command.startswith('chart_'):
+        wallet_address = command.split('_')[-1]
+        await send_chart_link(update, context, wallet_address)
 
 # Function to display sell and manage menu
 async def sell_manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: int) -> None:
@@ -635,6 +573,73 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_text(message, reply_markup=reply_markup)
     elif update.callback_query:
         await update.callback_query.edit_message_text(message, reply_markup=reply_markup)
+
+# Function to handle messages containing a wallet address
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.message.from_user.id
+    wallet_address = update.message.text.strip()
+    
+    # Here you would fetch the relevant information about the wallet address
+    # For now, let's assume we have fetched the data and create a dummy response
+    coin_info = {
+        'address': wallet_address,
+        'price': '0.0000356 TON',
+        'supply': '7.38K',
+        'market_cap': '24.89K',
+        'reserve': '7.38K',
+        'volume': '5.35K',
+        'pooled_ton': '564.47',
+        'wallet_balance': '2.3296710 TON'
+    }
+    
+    # Prepare the response message
+    response_message = (
+        f"📌 **Coin Information**\n\n"
+        f"🔗 **Address:** `{coin_info['address']}`\n"
+        f"💰 **Price:** {coin_info['price']}\n"
+        f"🔄 **Supply:** {coin_info['supply']}\n"
+        f"📊 **Market Cap:** {coin_info['market_cap']}\n"
+        f"💵 **Reserve:** {coin_info['reserve']}\n"
+        f"📈 **Volume (24h):** {coin_info['volume']}\n"
+        f"💸 **Pooled TON:** {coin_info['pooled_ton']}\n"
+        f"💼 **Wallet Balance:** {coin_info['wallet_balance']}\n\n"
+        f"👇 **To buy, press one of the buttons below:**"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{wallet_address}')],
+        [InlineKeyboardButton("$ Buy 1 TON", callback_data=f'buy_1_{wallet_address}'), InlineKeyboardButton("$ Buy 5 TON", callback_data=f'buy_5_{wallet_address}')],
+        [InlineKeyboardButton("$ Buy X TON", callback_data=f'buy_x_{wallet_address}')],
+        [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{wallet_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')]
+    ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(response_message, reply_markup=reply_markup, parse_mode='Markdown')
+
+# Function to send chart link
+async def send_chart_link(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_address: str) -> None:
+    chart_link = f"https://www.coingecko.com/en/coins/{wallet_address}"
+    await update.callback_query.edit_message_text(
+        f"📈 **Chart Link**\n\n[Click here to view the chart]({chart_link})",
+        parse_mode='Markdown'
+    )
+
+# Function to handle buy commands
+async def handle_buy_command(update: Update, context: ContextTypes.DEFAULT_TYPE, command: str) -> None:
+    parts = command.split('_')
+    amount = parts[1]
+    wallet_address = '_'.join(parts[2:])
+    
+    if amount == 'x':
+        await update.callback_query.edit_message_text(
+            f"Please send the amount of TON you want to buy for wallet address `{wallet_address}` in the following format:\n`/buy_x <amount>`",
+            parse_mode='Markdown'
+        )
+    else:
+        await update.callback_query.edit_message_text(
+            f"You have chosen to buy {amount} TON for wallet address `{wallet_address}`.\nThis is a dummy implementation.",
+            parse_mode='Markdown'
+        )
 
 def main() -> None:
     application = Application.builder().token(TELEGRAM_API_KEY).build()
