@@ -343,22 +343,18 @@ async def settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     lang = user_languages.get(user_id, 'en')
     keyboard = [
         [InlineKeyboardButton("🌐 Change Language", callback_data='change_language')],
+        [InlineKeyboardButton("❌ Delete Wallet", callback_data='deletewallet')],
+        [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
     ]
-    if user_id in user_wallets and user_wallets[user_id]:
-        keyboard.append([InlineKeyboardButton("❌ Delete Wallet", callback_data='deletewallet')])
-    keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text("⚙️ **Settings**", reply_markup=reply_markup, parse_mode='Markdown')
 
 # Function to display change language menu
 async def change_language_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [
-        [InlineKeyboardButton("English", callback_data='set_lang_en')],
-        [InlineKeyboardButton("Español", callback_data='set_lang_es')],
-        [InlineKeyboardButton("Русский", callback_data='set_lang_ru')],
-        [InlineKeyboardButton("Français", callback_data='set_lang_fr')],
-        [InlineKeyboardButton("Deutsch", callback_data='set_lang_de')],
-        [InlineKeyboardButton("Polski", callback_data='set_lang_pl')],
+        [InlineKeyboardButton("English", callback_data='set_lang_en'), InlineKeyboardButton("Español", callback_data='set_lang_es')],
+        [InlineKeyboardButton("Русский", callback_data='set_lang_ru'), InlineKeyboardButton("Français", callback_data='set_lang_fr')],
+        [InlineKeyboardButton("Deutsch", callback_data='set_lang_de'), InlineKeyboardButton("Polski", callback_data='set_lang_pl')],
         [InlineKeyboardButton("⬅️ Back", callback_data='settings')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
