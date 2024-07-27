@@ -341,16 +341,35 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
 async def settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.callback_query.from_user.id
     lang = user_languages.get(user_id, 'en')
+    settings_message = {
+        'en': "⚙️ **Settings**\n\nChoose an option to configure your wallet and bot settings.",
+        'es': "⚙️ **Configuraciones**\n\nElige una opción para configurar tu billetera y ajustes del bot.",
+        'ru': "⚙️ **Настройки**\n\nВыберите опцию для настройки вашего кошелька и параметров бота.",
+        'fr': "⚙️ **Paramètres**\n\nChoisissez une option pour configurer votre portefeuille et les paramètres du bot.",
+        'de': "⚙️ **Einstellungen**\n\nWählen Sie eine Option, um Ihre Wallet- und Bot-Einstellungen zu konfigurieren.",
+        'pl': "⚙️ **Ustawienia**\n\nWybierz opcję, aby skonfigurować portfel i ustawienia bota."
+    }
     keyboard = [
         [InlineKeyboardButton("🌐 Change Language", callback_data='change_language')],
         [InlineKeyboardButton("❌ Delete Wallet", callback_data='deletewallet')],
         [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.edit_message_text("⚙️ **Settings**", reply_markup=reply_markup, parse_mode='Markdown')
+    await update.callback_query.edit_message_text(settings_message.get(lang, settings_message['en']), reply_markup=reply_markup, parse_mode='Markdown')
+
 
 # Function to display change language menu
 async def change_language_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.callback_query.from_user.id
+    lang = user_languages.get(user_id, 'en')
+    language_message = {
+        'en': "🌐 **Change Language**\n\nSelect your preferred language.",
+        'es': "🌐 **Cambiar Idioma**\n\nSelecciona tu idioma preferido.",
+        'ru': "🌐 **Изменить язык**\n\nВыберите предпочитаемый язык.",
+        'fr': "🌐 **Changer de langue**\n\nSélectionnez votre langue préférée.",
+        'de': "🌐 **Sprache ändern**\n\nWählen Sie Ihre bevorzugte Sprache.",
+        'pl': "🌐 **Zmień język**\n\nWybierz preferowany język."
+    }
     keyboard = [
         [InlineKeyboardButton("English", callback_data='set_lang_en'), InlineKeyboardButton("Español", callback_data='set_lang_es')],
         [InlineKeyboardButton("Русский", callback_data='set_lang_ru'), InlineKeyboardButton("Français", callback_data='set_lang_fr')],
@@ -358,7 +377,7 @@ async def change_language_menu(update: Update, context: ContextTypes.DEFAULT_TYP
         [InlineKeyboardButton("⬅️ Back", callback_data='settings')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.edit_message_text("🌐 **Change Language**", reply_markup=reply_markup, parse_mode='Markdown')
+    await update.callback_query.edit_message_text(language_message.get(lang, language_message['en']), reply_markup=reply_markup, parse_mode='Markdown')
 
 # Function to set the language
 async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE, lang: str) -> None:
