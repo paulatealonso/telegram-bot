@@ -82,7 +82,7 @@ def get_welcome_message(wallet_info=None, lang='en') -> str:
     message = welcome_message.get(lang, welcome_message['en'])
     if wallet_info:
         message += (
-            f"\n\n🔑 **Your Wallet Address:** {wallet_info['address']}\n"
+            f"\n\n🔑 **Your Wallet Address:** `{wallet_info['address']}`\n"
             f"💰 **Balance:** 0.0 TON (dummy value for now)\n"
         )
     return message
@@ -245,8 +245,8 @@ async def generate_and_store_wallet(update: Update, context: ContextTypes.DEFAUL
     # Prepare the response message
     response_message = (
         f"🎉 **New Wallet Generated!** 🎉\n\n"
-        f"🔑 **Address:** {wallet_address}\n\n"
-        f"📝 **Seed Phrase:** {mnemonic}\n\n"
+        f"🔑 **Address:** `{wallet_address}`\n\n"
+        f"📝 **Seed Phrase:** `{mnemonic}`\n\n"
         f"⚠️ **Important Security Notice:**\n"
         f"1️⃣ **Write down your seed phrase on paper.** Do not save it digitally.\n"
         f"2️⃣ **Never share your seed phrase with anyone.** It grants full access to your wallet.\n"
