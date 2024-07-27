@@ -102,7 +102,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         wallet_info = user_wallets[user_id][-1]
         welcome_message = get_welcome_message(wallet_info, lang)
         keyboard = [
-            [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data='sell_manage')],
+            [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data=f'sell_manage_{len(user_wallets[user_id]) - 1}')],
             [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
             [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')]
@@ -134,7 +134,7 @@ async def send_main_menu(message, user_id: int) -> None:
         wallet_info = user_wallets[user_id][-1]
         welcome_message = get_welcome_message(wallet_info, lang)
         keyboard = [
-            [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data='sell_manage')],
+            [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data=f'sell_manage_{len(user_wallets[user_id]) - 1}')],
             [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
             [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')]
@@ -164,16 +164,21 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await wallets_menu(update, context)
     elif command == 'connectwallet':
         await connect_wallet(update, context)
-    elif command == 'sell_manage':
-        await sell_manage_menu(update, context)
-    elif command == 'deposit':
-        await deposit_ton(update, context)
-    elif command == 'withdraw_all':
-        await withdraw_all_ton(update, context)
-    elif command == 'withdraw_x':
-        await withdraw_x_ton(update, context)
-    elif command == 'disconnect':
-        await disconnect_wallet(update, context)
+    elif command.startswith('sell_manage_'):
+        wallet_index = int(command.split('_')[-1])
+        await sell_manage_menu(update, context, wallet_index)
+    elif command.startswith('deposit_'):
+        wallet_index = int(command.split('_')[-1])
+        await deposit_ton(update, context, wallet_index)
+    elif command.startswith('withdraw_all_'):
+        wallet_index = int(command.split('_')[-1])
+        await withdraw_all_ton(update, context, wallet_index)
+    elif command.startswith('withdraw_x_'):
+        wallet_index = int(command.split('_')[-1])
+        await withdraw_x_ton(update, context, wallet_index)
+    elif command.startswith('disconnect_'):
+        wallet_index = int(command.split('_')[-1])
+        await disconnect_wallet(update, context, wallet_index)
     elif command == 'help':
         await help_command(update, context)
     elif command == 'viewwallets':
@@ -182,8 +187,6 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await view_wallet(update, context, command.split('_')[1])
     elif command == 'newwallet':
         await generate_and_store_wallet(update, context)
-    elif command.startswith('viewlastwallet_'):
-        await view_wallet(update, context, command.split('_')[1])
     elif command == 'mainmenu':
         user_id = query.from_user.id
         await send_main_menu(query.message, user_id)
@@ -199,10 +202,10 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await delete_wallet_menu(update, context)
 
 # Function to display sell and manage menu
-async def sell_manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def sell_manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: int) -> None:
     user_id = update.callback_query.from_user.id
     lang = user_languages.get(user_id, 'en')
-    wallet_info = user_wallets[user_id][-1] if user_id in user_wallets and user_wallets[user_id] else None
+    wallet_info = user_wallets[user_id][wallet_index] if user_id in user_wallets and len(user_wallets[user_id]) > wallet_index else None
     welcome_message = get_welcome_message(wallet_info, lang)
     
     # Prepare positions text
@@ -217,15 +220,15 @@ async def sell_manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     
     keyboard = [
         [
-            InlineKeyboardButton("💸 Withdraw All TON", callback_data='withdraw_all'),
-            InlineKeyboardButton("💸 Withdraw X TON", callback_data='withdraw_x')
+            InlineKeyboardButton("💸 Withdraw All TON", callback_data=f'withdraw_all_{wallet_index}'),
+            InlineKeyboardButton("💸 Withdraw X TON", callback_data=f'withdraw_x_{wallet_index}')
         ],
         [
-            InlineKeyboardButton("💸 Deposit TON", callback_data='deposit'),
-            InlineKeyboardButton("🔒 Disconnect Wallet", callback_data='disconnect')
+            InlineKeyboardButton("💸 Deposit TON", callback_data=f'deposit_{wallet_index}'),
+            InlineKeyboardButton("🔒 Disconnect Wallet", callback_data=f'disconnect_{wallet_index}')
         ],
         [
-            InlineKeyboardButton("🔄 Refresh", callback_data='sell_manage'),
+            InlineKeyboardButton("🔄 Refresh", callback_data=f'sell_manage_{wallet_index}'),
             InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')
         ]
     ]
@@ -322,7 +325,7 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
             f"💼 **Your Positions:**\n{positions_text}\n\n"
         )
         new_reply_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data=f'sell_manage')],
+            [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data=f'sell_manage_{wallet_index}')],
             [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
             [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
             [InlineKeyboardButton("⬅️ Back", callback_data='viewwallets')]
@@ -427,11 +430,24 @@ async def delete_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wall
         del user_wallets[user_id][wallet_index]
         if not user_wallets[user_id]:
             del user_wallets[user_id]
-            # Redirect to the main menu as no wallets are left
+            # Redirect to the start menu as no wallets are left
             await start(update, context)
         else:
-            # Show the list of remaining wallets
-            await view_wallets(update, context)
+            # Show the main menu with remaining wallets
+            await send_main_menu(update.callback_query.message, user_id)
+
+# Function to disconnect the wallet
+async def disconnect_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: int) -> None:
+    user_id = update.callback_query.from_user.id
+    if user_id in user_wallets and wallet_index < len(user_wallets[user_id]):
+        del user_wallets[user_id][wallet_index]
+        if not user_wallets[user_id]:
+            del user_wallets[user_id]
+            # Redirect to the start menu as no wallets are left
+            await start(update, context)
+        else:
+            # Show the main menu with remaining wallets
+            await send_main_menu(update.callback_query.message, user_id)
 
 # Function to connect an existing wallet
 async def connect_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -456,30 +472,22 @@ async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     except IndexError:
         await update.message.reply_text("Usage: /connect <wallet_address> <seed_phrase>")
 
-# Function to disconnect the wallet
-async def disconnect_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.callback_query.from_user.id
-    if user_id in user_wallets:
-        user_wallets.pop(user_id, None)
-        await update.callback_query.edit_message_text("Your wallet has been disconnected.")
-    await send_main_menu(update.callback_query.message, user_id)
-
 # Function to deposit TON coins
-async def deposit_ton(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def deposit_ton(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: int) -> None:
     await update.callback_query.edit_message_text(
         "Please send the amount of TON and the wallet address in the following format:\n`/deposit <amount> <wallet_address>`",
         parse_mode='Markdown'
     )
 
 # Function to withdraw all TON coins
-async def withdraw_all_ton(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def withdraw_all_ton(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: int) -> None:
     await update.callback_query.edit_message_text(
         "Please send the destination wallet address in the following format:\n`/withdraw_all <wallet_address>`",
         parse_mode='Markdown'
     )
 
 # Function to withdraw a specific amount of TON coins
-async def withdraw_x_ton(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def withdraw_x_ton(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: int) -> None:
     await update.callback_query.edit_message_text(
         "Please send the amount and the destination wallet address in the following format:\n`/withdraw_x <amount> <wallet_address>`",
         parse_mode='Markdown'
