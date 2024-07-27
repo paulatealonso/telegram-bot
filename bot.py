@@ -349,11 +349,14 @@ async def settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         'de': "⚙️ **Einstellungen**\n\nWählen Sie eine Option, um Ihre Wallet- und Bot-Einstellungen zu konfigurieren.",
         'pl': "⚙️ **Ustawienia**\n\nWybierz opcję, aby skonfigurować portfel i ustawienia bota."
     }
-    keyboard = [
-        [InlineKeyboardButton("🌐 Change Language", callback_data='change_language')],
-        [InlineKeyboardButton("❌ Delete Wallet", callback_data='deletewallet')],
-        [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
-    ]
+    keyboard = [[InlineKeyboardButton("🌐 Change Language", callback_data='change_language')]]
+    
+    # Add delete wallet option only if there are wallets
+    if user_id in user_wallets and user_wallets[user_id]:
+        keyboard.append([InlineKeyboardButton("❌ Delete Wallet", callback_data='deletewallet')])
+
+    keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')])
+    
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(settings_message.get(lang, settings_message['en']), reply_markup=reply_markup, parse_mode='Markdown')
 
