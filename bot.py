@@ -1,5 +1,5 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 import requests
 import os
 from dotenv import load_dotenv
@@ -87,30 +87,31 @@ def get_welcome_message(wallet_info=None, lang='en') -> str:
         )
     return message
 
-# Function to get token information
-def get_token_info(wallet_address: str, lang='en') -> str:
+# Function to get token information message
+def get_token_info(wallet_address: str, lang: str) -> str:
+    # Dummy data for the token information
     token_info = {
         'en': (
-            f"🔍 **Token Information**\n\n"
-            f"💼 **Wallet Address:** `{wallet_address}`\n"
-            f"💰 **Price:** 0.0000356 TON\n"
+            f"🔗 **Token Information** 🔗\n\n"
+            f"🌐 **Address:** `{wallet_address}`\n"
+            f"💵 **Price:** 0.0000356 TON\n"
             f"✨ **Total Supply:** 7.38K\n"
-            f"🌐 **Market Cap:** 24.89K\n"
-            f"💵 **Reserve:** 7.38K\n"
-            f"📊 **Volume 24h:** 5.35K\n"
-            f"🔄 **Pooled TON:** 564.476 TON\n\n"
-            f"👇 To buy, press one of the buttons below."
+            f"📈 **Market Cap:** 24.89K\n"
+            f"💸 **24h Volume:** 5.35K\n"
+            f"🔒 **Pooled TON:** 564.476131812 TON\n"
+            f"💼 **Wallet Balance:** 2.3296710 TON\n\n"
+            f"👇 **To buy, press one of the buttons below:**"
         ),
         'es': (
-            f"🔍 **Información del Token**\n\n"
-            f"💼 **Dirección de la Billetera:** `{wallet_address}`\n"
-            f"💰 **Precio:** 0.0000356 TON\n"
+            f"🔗 **Información del Token** 🔗\n\n"
+            f"🌐 **Dirección:** `{wallet_address}`\n"
+            f"💵 **Precio:** 0.0000356 TON\n"
             f"✨ **Suministro Total:** 7.38K\n"
-            f"🌐 **Cap. de Mercado:** 24.89K\n"
-            f"💵 **Reserva:** 7.38K\n"
-            f"📊 **Volumen 24h:** 5.35K\n"
-            f"🔄 **TON Agrupados:** 564.476 TON\n\n"
-            f"👇 Para comprar, presione uno de los botones a continuación."
+            f"📈 **Capitalización de Mercado:** 24.89K\n"
+            f"💸 **Volumen 24h:** 5.35K\n"
+            f"🔒 **TON en Pool:** 564.476131812 TON\n"
+            f"💼 **Saldo de la Cartera:** 2.3296710 TON\n\n"
+            f"👇 **Para comprar, presiona uno de los botones a continuación:**"
         )
     }
     return token_info.get(lang, token_info['en'])
@@ -131,7 +132,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         welcome_message = get_welcome_message(wallet_info, lang)
         keyboard = [
             [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data=f'sell_manage_{len(user_wallets[user_id]) - 1}')],
-            [InlineKeyboardButton("💵 Buy", callback_data='buy')],
             [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
             [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')]
@@ -164,7 +164,6 @@ async def send_main_menu(message, user_id: int) -> None:
         welcome_message = get_welcome_message(wallet_info, lang)
         keyboard = [
             [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data=f'sell_manage_{len(user_wallets[user_id]) - 1}')],
-            [InlineKeyboardButton("💵 Buy", callback_data='buy')],
             [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
             [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
             [InlineKeyboardButton("ℹ️ Help", callback_data='help')]
@@ -183,6 +182,30 @@ async def send_main_menu(message, user_id: int) -> None:
 # Helper function to compare message contents
 def message_content_changed(current_message, new_text, new_reply_markup):
     return current_message.text != new_text or current_message.reply_markup != new_reply_markup
+
+# Function to handle text messages
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.message.from_user.id
+    text = update.message.text.strip()
+
+    # Check if the message is a valid wallet address
+    if text.startswith('EQ') and len(text) == 48:
+        lang = user_languages.get(user_id, 'en')
+        token_info_message = get_token_info(text, lang)
+        
+        keyboard = [
+            [InlineKeyboardButton("📊 Chart", callback_data='chart')],
+            [InlineKeyboardButton("🔍 Scan", callback_data='scan')],
+            [InlineKeyboardButton("💸 Buy 1 TON", callback_data='buy_1_ton')],
+            [InlineKeyboardButton("💸 Buy 5 TON", callback_data='buy_5_ton')],
+            [InlineKeyboardButton("💸 Buy X TON", callback_data='buy_x_ton')],
+            [InlineKeyboardButton("🔄 Refresh", callback_data='refresh')],
+            [InlineKeyboardButton("❌ Cancel", callback_data='cancel')],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(token_info_message, reply_markup=reply_markup, parse_mode='Markdown')
+    else:
+        await update.message.reply_text("Invalid wallet address. Please try again.")
 
 # Callback handler for button presses
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -230,8 +253,20 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await set_language(update, context, command.split('_')[2])
     elif command == 'deletewallet':
         await delete_wallet_menu(update, context)
-    elif command == 'buy':
-        await buy_token(update, context)
+    elif command == 'chart':
+        await query.message.reply_text("📊 Here is the chart link: [Chart URL](https://example.com/chart)", parse_mode='Markdown')
+    elif command == 'scan':
+        await query.message.reply_text("🔍 Scanning the token information...")
+    elif command == 'buy_1_ton':
+        await query.message.reply_text("💸 Buying 1 TON...")
+    elif command == 'buy_5_ton':
+        await query.message.reply_text("💸 Buying 5 TON...")
+    elif command == 'buy_x_ton':
+        await query.message.reply_text("💸 Please specify the amount of TON to buy.")
+    elif command == 'refresh':
+        await query.message.reply_text("🔄 Refreshing the token information...")
+    elif command == 'cancel':
+        await query.message.reply_text("❌ Action cancelled.")
 
 # Function to display sell and manage menu
 async def sell_manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: int) -> None:
@@ -524,28 +559,6 @@ async def withdraw_x_ton(update: Update, context: ContextTypes.DEFAULT_TYPE, wal
         parse_mode='Markdown'
     )
 
-# Function to handle buy action
-async def buy_token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    lang = user_languages.get(update.callback_query.from_user.id, 'en')
-    message = get_token_info("dummy_wallet_address", lang)
-    keyboard = [
-        [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.edit_message_text(message, reply_markup=reply_markup, parse_mode='Markdown')
-
-# Function to detect wallet address in messages
-async def detect_wallet_address(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    wallet_address = update.message.text.strip()
-    if wallet_address.startswith("EQ"):
-        lang = user_languages.get(update.message.from_user.id, 'en')
-        message = get_token_info(wallet_address, lang)
-        keyboard = [
-            [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(message, reply_markup=reply_markup, parse_mode='Markdown')
-
 # Help function
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.callback_query.from_user.id
@@ -631,8 +644,8 @@ def main() -> None:
     application.add_handler(CommandHandler('help', help_command))
     application.add_handler(CommandHandler('connect', connect))
     application.add_handler(CommandHandler('addposition', add_position_command))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(CallbackQueryHandler(button))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, detect_wallet_address))
 
     application.run_polling()
 
