@@ -205,6 +205,11 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     elif command.startswith('chart_'):
         wallet_address = command.split('_')[-1]
         await send_chart_link(update, context, wallet_address)
+    elif command.startswith('refresh_'):
+        wallet_address = command.split('_')[-1]
+        await refresh_coin_info(update, context, wallet_address)
+    elif command.startswith('cancel_'):
+        await send_main_menu(update.callback_query.message, update.callback_query.from_user.id)
 
 # Function to display sell and manage menu
 async def sell_manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_index: int) -> None:
@@ -351,14 +356,15 @@ async def settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         'de': "⚙️ **Einstellungen**\n\nWählen Sie eine Option, um Ihre Wallet- und Bot-Einstellungen zu konfigurieren.",
         'pl': "⚙️ **Ustawienia**\n\nWybierz opcję, aby skonfigurować portfel i ustawienia bota."
     }
-    keyboard = [[InlineKeyboardButton("🌐 Change Language", callback_data='change_language')]]
+    keyboard = [
+        [InlineKeyboardButton("🌐 Change Language", callback_data='change_language')],
+        [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
+    ]
     
     # Add delete wallet option only if there are wallets
     if user_id in user_wallets and user_wallets[user_id]:
-        keyboard.append([InlineKeyboardButton("❌ Delete Wallet", callback_data='deletewallet')])
+        keyboard.insert(1, [InlineKeyboardButton("❌ Delete Wallet", callback_data='deletewallet')])
 
-    keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')])
-    
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(settings_message.get(lang, settings_message['en']), reply_markup=reply_markup, parse_mode='Markdown')
 
@@ -367,17 +373,17 @@ async def change_language_menu(update: Update, context: ContextTypes.DEFAULT_TYP
     user_id = update.callback_query.from_user.id
     lang = user_languages.get(user_id, 'en')
     language_message = {
-        'en': "🌐 **Change Language**\n\nSelect your preferred language.",
-        'es': "🌐 **Cambiar Idioma**\n\nSelecciona tu idioma preferido.",
-        'ru': "🌐 **Изменить язык**\n\nВыберите предпочитаемый язык.",
-        'fr': "🌐 **Changer de langue**\n\nSélectionnez votre langue préférée.",
-        'de': "🌐 **Sprache ändern**\n\nWählen Sie Ihre bevorzugte Sprache.",
-        'pl': "🌐 **Zmień język**\n\nWybierz preferowany język."
+        'en': "🌐 **Change Language**\n\nSelect your preferred language:",
+        'es': "🌐 **Cambiar Idioma**\n\nSelecciona tu idioma preferido:",
+        'ru': "🌐 **Изменить язык**\n\nВыберите предпочитаемый язык:",
+        'fr': "🌐 **Changer de langue**\n\nSélectionnez votre langue préférée :",
+        'de': "🌐 **Sprache ändern**\n\nWählen Sie Ihre bevorzugte Sprache:",
+        'pl': "🌐 **Zmień język**\n\nWybierz preferowany język:"
     }
     keyboard = [
-        [InlineKeyboardButton("English", callback_data='set_lang_en'), InlineKeyboardButton("Español", callback_data='set_lang_es')],
-        [InlineKeyboardButton("Русский", callback_data='set_lang_ru'), InlineKeyboardButton("Français", callback_data='set_lang_fr')],
-        [InlineKeyboardButton("Deutsch", callback_data='set_lang_de'), InlineKeyboardButton("Polski", callback_data='set_lang_pl')],
+        [InlineKeyboardButton("🇬🇧 English", callback_data='set_lang_en'), InlineKeyboardButton("🇪🇸 Español", callback_data='set_lang_es')],
+        [InlineKeyboardButton("🇷🇺 Русский", callback_data='set_lang_ru'), InlineKeyboardButton("🇫🇷 Français", callback_data='set_lang_fr')],
+        [InlineKeyboardButton("🇩🇪 Deutsch", callback_data='set_lang_de'), InlineKeyboardButton("🇵🇱 Polski", callback_data='set_lang_pl')],
         [InlineKeyboardButton("⬅️ Back", callback_data='settings')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -610,7 +616,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{wallet_address}')],
         [InlineKeyboardButton("$ Buy 1 TON", callback_data=f'buy_1_{wallet_address}'), InlineKeyboardButton("$ Buy 5 TON", callback_data=f'buy_5_{wallet_address}')],
         [InlineKeyboardButton("$ Buy X TON", callback_data=f'buy_x_{wallet_address}')],
-        [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{wallet_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')]
+        [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{wallet_address}'), InlineKeyboardButton("⬅️ Back", callback_data=f'mainmenu')]
     ]
     
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -619,8 +625,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # Function to send chart link
 async def send_chart_link(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_address: str) -> None:
     chart_link = f"https://www.coingecko.com/en/coins/{wallet_address}"
+    keyboard = [[InlineKeyboardButton("⬅️ Back", callback_data=f'buy_{wallet_address}')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
         f"📈 **Chart Link**\n\n[Click here to view the chart]({chart_link})",
+        reply_markup=reply_markup,
         parse_mode='Markdown'
     )
 
@@ -640,6 +649,11 @@ async def handle_buy_command(update: Update, context: ContextTypes.DEFAULT_TYPE,
             f"You have chosen to buy {amount} TON for wallet address `{wallet_address}`.\nThis is a dummy implementation.",
             parse_mode='Markdown'
         )
+
+# Function to refresh coin info
+async def refresh_coin_info(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_address: str) -> None:
+    # Dummy implementation of refreshing coin info
+    await handle_message(update, context)
 
 def main() -> None:
     application = Application.builder().token(TELEGRAM_API_KEY).build()
