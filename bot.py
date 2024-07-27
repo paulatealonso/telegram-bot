@@ -102,19 +102,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         wallet_info = user_wallets[user_id][-1]
         welcome_message = get_welcome_message(wallet_info, lang)
         keyboard = [
-            [InlineKeyboardButton("💸 Sell and Manage", callback_data='sell_manage')],
-            [InlineKeyboardButton("🔗 Disconnect Wallet", callback_data='disconnect')],
-            [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
+            [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data='sell_manage')],
+            [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
             [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
-            [InlineKeyboardButton("📜 Wallets", callback_data='wallets')]
+            [InlineKeyboardButton("ℹ️ Help", callback_data='help')]
         ]
     else:
         welcome_message = get_welcome_message(lang=lang)
         keyboard = [
             [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
             [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
-            [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
             [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
+            [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
         ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -135,19 +134,18 @@ async def send_main_menu(message, user_id: int) -> None:
         wallet_info = user_wallets[user_id][-1]
         welcome_message = get_welcome_message(wallet_info, lang)
         keyboard = [
-            [InlineKeyboardButton("💸 Sell and Manage", callback_data='sell_manage')],
-            [InlineKeyboardButton("🔗 Disconnect Wallet", callback_data='disconnect')],
-            [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
+            [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data='sell_manage')],
+            [InlineKeyboardButton("📜 Wallets", callback_data='wallets')],
             [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
-            [InlineKeyboardButton("📜 Wallets", callback_data='wallets')]
+            [InlineKeyboardButton("ℹ️ Help", callback_data='help')]
         ]
     else:
         welcome_message = get_welcome_message(lang=lang)
         keyboard = [
             [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet')],
             [InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
-            [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
             [InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
+            [InlineKeyboardButton("ℹ️ Help", callback_data='help')],
         ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
@@ -204,31 +202,35 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def sell_manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.callback_query.from_user.id
     lang = user_languages.get(user_id, 'en')
-    if user_id in user_wallets and user_wallets[user_id]:
-        wallet_info = user_wallets[user_id][-1]
-        welcome_message = get_welcome_message(wallet_info, lang)
+    wallet_info = user_wallets[user_id][-1] if user_id in user_wallets and user_wallets[user_id] else None
+    welcome_message = get_welcome_message(wallet_info, lang)
+    
+    # Prepare positions text
+    positions_text = "\n".join([f"{coin}: {amount} TON" for coin, amount in wallet_info["positions"].items()])
+    if not positions_text:
+        positions_text = "No positions added yet."
 
-        positions_text = "\n".join([f"{coin}: {amount} TON" for coin, amount in wallet_info["positions"].items()])
-        if not positions_text:
-            positions_text = "No positions added yet."
-
-        message = (
-            f"{welcome_message}\n\n"
-            f"💼 **Your Positions:**\n{positions_text}\n\n"
-        )
-
-        keyboard = [
-            [InlineKeyboardButton("💸 Deposit TON", callback_data='deposit')],
-            [InlineKeyboardButton("💸 Withdraw All TON", callback_data='withdraw_all')],
-            [InlineKeyboardButton("💸 Withdraw X TON", callback_data='withdraw_x')],
-            [InlineKeyboardButton("❌ Close Wallet", callback_data='deletewallet')],
-            [InlineKeyboardButton("🔄 Refresh", callback_data='sell_manage')],
-            [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
+    full_message = (
+        f"{welcome_message}\n\n"
+        f"💼 **Your Positions:**\n{positions_text}\n\n"
+    )
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("💸 Withdraw All TON", callback_data='withdraw_all'),
+            InlineKeyboardButton("💸 Withdraw X TON", callback_data='withdraw_x')
+        ],
+        [
+            InlineKeyboardButton("💸 Deposit TON", callback_data='deposit'),
+            InlineKeyboardButton("🔒 Disconnect Wallet", callback_data='disconnect')
+        ],
+        [
+            InlineKeyboardButton("🔄 Refresh", callback_data='sell_manage'),
+            InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')
         ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.callback_query.edit_message_text(message, reply_markup=reply_markup, parse_mode='Markdown')
-    else:
-        await update.callback_query.edit_message_text("No wallet connected.", parse_mode='Markdown')
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.edit_message_text(full_message, reply_markup=reply_markup, parse_mode='Markdown')
 
 # Function to display wallets menu
 async def wallets_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -323,7 +325,7 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
             f"💼 **Your Positions:**\n{positions_text}\n\n"
         )
         new_reply_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("💸 Sell and Manage", callback_data='sell_manage')],
+            [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data='sell_manage')],
             [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
             [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
             [InlineKeyboardButton("⬅️ Back", callback_data='viewwallets')]
