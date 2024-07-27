@@ -203,16 +203,32 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 # Function to display sell and manage menu
 async def sell_manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.callback_query.from_user.id
-    keyboard = [
-        [InlineKeyboardButton("💸 Withdraw All TON", callback_data='withdraw_all')],
-        [InlineKeyboardButton("💸 Withdraw X TON", callback_data='withdraw_x')],
-        [InlineKeyboardButton("💸 Deposit TON", callback_data='deposit')],
-        [InlineKeyboardButton("🔒 Close Wallet", callback_data='disconnect')],
-        [InlineKeyboardButton("🔄 Refresh", callback_data='viewwallet')],
-        [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.edit_message_text("🔧 **Sell and Manage**", reply_markup=reply_markup, parse_mode='Markdown')
+    lang = user_languages.get(user_id, 'en')
+    if user_id in user_wallets and user_wallets[user_id]:
+        wallet_info = user_wallets[user_id][-1]
+        welcome_message = get_welcome_message(wallet_info, lang)
+
+        positions_text = "\n".join([f"{coin}: {amount} TON" for coin, amount in wallet_info["positions"].items()])
+        if not positions_text:
+            positions_text = "No positions added yet."
+
+        message = (
+            f"{welcome_message}\n\n"
+            f"💼 **Your Positions:**\n{positions_text}\n\n"
+        )
+
+        keyboard = [
+            [InlineKeyboardButton("💸 Deposit TON", callback_data='deposit')],
+            [InlineKeyboardButton("💸 Withdraw All TON", callback_data='withdraw_all')],
+            [InlineKeyboardButton("💸 Withdraw X TON", callback_data='withdraw_x')],
+            [InlineKeyboardButton("❌ Close Wallet", callback_data='deletewallet')],
+            [InlineKeyboardButton("🔄 Refresh", callback_data='sell_manage')],
+            [InlineKeyboardButton("⬅️ Back", callback_data='mainmenu')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.callback_query.edit_message_text(message, reply_markup=reply_markup, parse_mode='Markdown')
+    else:
+        await update.callback_query.edit_message_text("No wallet connected.", parse_mode='Markdown')
 
 # Function to display wallets menu
 async def wallets_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -308,7 +324,7 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
         )
         new_reply_markup = InlineKeyboardMarkup([
             [InlineKeyboardButton("💸 Sell and Manage", callback_data='sell_manage')],
-            [InlineKeyboardButton("🔗 Disconnect Wallet", callback_data='disconnect')],
+            [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
             [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
             [InlineKeyboardButton("⬅️ Back", callback_data='viewwallets')]
         ])
