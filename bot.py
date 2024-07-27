@@ -164,7 +164,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await wallets_menu(update, context)
     elif command == 'connectwallet':
         await connect_wallet(update, context)
-    elif command.startswith('sell_manage_'):
+    elif command == 'sell_manage':
         await sell_manage_menu(update, context)
     elif command == 'deposit':
         await deposit_ton(update, context)
@@ -322,7 +322,7 @@ async def view_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet
             f"💼 **Your Positions:**\n{positions_text}\n\n"
         )
         new_reply_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data=f'sell_manage_{wallet_index}')],
+            [InlineKeyboardButton("💼 Sell and Manage 💼", callback_data=f'sell_manage')],
             [InlineKeyboardButton("❌ Delete Wallet", callback_data=f'deletewallet_{wallet_index}')],
             [InlineKeyboardButton("🔄 Refresh", callback_data=f'viewwallet_{wallet_index}')],
             [InlineKeyboardButton("⬅️ Back", callback_data='viewwallets')]
