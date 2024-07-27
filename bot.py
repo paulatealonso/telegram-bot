@@ -87,6 +87,30 @@ def get_welcome_message(wallet_info=None, lang='en') -> str:
         )
     return message
 
+# Function to fetch coin information from TON API
+def fetch_coin_info(wallet_address: str) -> dict:
+    url = f"{TONCENTER_API_URL}/getAddressInformation?address={wallet_address}"
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {TON_API_KEY}"
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        data = response.json()
+        coin_info = {
+            'address': wallet_address,
+            'price': data['balance']['price_usd'] if 'price_usd' in data['balance'] else 'N/A',
+            'supply': data.get('supply', 'N/A'),
+            'market_cap': data.get('market_cap', 'N/A'),
+            'reserve': data.get('reserve', 'N/A'),
+            'volume': data.get('volume', 'N/A'),
+            'pooled_ton': data.get('pooled_ton', 'N/A'),
+            'wallet_balance': data['balance']['total_balance'] if 'total_balance' in data['balance'] else 'N/A'
+        }
+        return coin_info
+    else:
+        return None
+
 # Start function
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message:
@@ -585,18 +609,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_id = update.message.from_user.id
     wallet_address = update.message.text.strip()
     
-    # Here you would fetch the relevant information about the wallet address
-    # For now, let's assume we have fetched the data and create a dummy response
-    coin_info = {
-        'address': wallet_address,
-        'price': '0.0000356 TON',
-        'supply': '7.38K',
-        'market_cap': '24.89K',
-        'reserve': '7.38K',
-        'volume': '5.35K',
-        'pooled_ton': '564.47',
-        'wallet_balance': '2.3296710 TON'
-    }
+    # Fetch the relevant information about the wallet address
+    coin_info = fetch_coin_info(wallet_address)
+    if not coin_info:
+        await update.message.reply_text("Failed to fetch coin information. Please try again.")
+        return
     
     # Prepare the response message
     response_message = (
@@ -633,7 +650,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 # Function to send chart link
 async def send_chart_link(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_address: str) -> None:
-    chart_link = f"https://www.coingecko.com/en/coins/{wallet_address}"
+    chart_link = f"https://tonscan.org/address/{wallet_address}"
     keyboard = [[InlineKeyboardButton("⬅️ Back", callback_data=f'back_{wallet_address}')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(
@@ -661,18 +678,11 @@ async def handle_buy_command(update: Update, context: ContextTypes.DEFAULT_TYPE,
 
 # Function to refresh coin information
 async def refresh_coin_info(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_address: str) -> None:
-    # Here you would re-fetch the relevant information about the wallet address
-    # For now, let's assume we have re-fetched the data and create a dummy response
-    coin_info = {
-        'address': wallet_address,
-        'price': '0.0000356 TON',
-        'supply': '7.38K',
-        'market_cap': '24.89K',
-        'reserve': '7.38K',
-        'volume': '5.35K',
-        'pooled_ton': '564.47',
-        'wallet_balance': '2.3296710 TON'
-    }
+    # Re-fetch the relevant information about the wallet address
+    coin_info = fetch_coin_info(wallet_address)
+    if not coin_info:
+        await update.callback_query.edit_message_text("Failed to fetch coin information. Please try again.")
+        return
     
     # Prepare the response message
     response_message = (
