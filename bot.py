@@ -20,6 +20,9 @@ TONCENTER_API_URL = os.getenv('TONCENTER_API_URL')
 user_wallets = {}
 user_languages = {}
 
+# Base URL of the GeckoTerminal API
+base_url_geckoterminal = "https://api.geckoterminal.com/api/v2/networks/ton/tokens"
+
 # Function to generate a new TON wallet with mixed language mnemonics
 def generate_wallet() -> tuple[str, str]:
     mnemo = Mnemonic("english")
@@ -87,29 +90,37 @@ def get_welcome_message(wallet_info=None, lang='en') -> str:
         )
     return message
 
-# Function to fetch coin information from TON API
-def fetch_coin_info(wallet_address: str) -> dict:
-    url = f"{TONCENTER_API_URL}/getAddressInformation?address={wallet_address}"
-    headers = {
-        "Accept": "application/json",
-        "Authorization": f"Bearer {TON_API_KEY}"
-    }
+# Function to get detailed token information from GeckoTerminal by contract address
+def get_detailed_token_info(contract_address):
+    url = f"{base_url_geckoterminal}/{contract_address}/info"
+    headers = {'Accept': 'application/json'}
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
-        data = response.json()
-        coin_info = {
-            'address': wallet_address,
-            'price': data['balance']['price_usd'] if 'price_usd' in data['balance'] else 'N/A',
-            'supply': data.get('supply', 'N/A'),
-            'market_cap': data.get('market_cap', 'N/A'),
-            'reserve': data.get('reserve', 'N/A'),
-            'volume': data.get('volume', 'N/A'),
-            'pooled_ton': data.get('pooled_ton', 'N/A'),
-            'wallet_balance': data['balance']['total_balance'] if 'total_balance' in data['balance'] else 'N/A'
+        data = response.json().get('data', {}).get('attributes', {})
+        return {
+            'name': data.get('name', 'No data available'),
+            'symbol': data.get('symbol', 'No data available'),
+            'websites': data.get('websites', [])
         }
-        return coin_info
     else:
         return None
+
+# Function to get token price, liquidity, FDV, and volume info from GeckoTerminal pools
+def get_token_pool_info(contract_address):
+    pool_url = f"{base_url_geckoterminal}/{contract_address}/pools"
+    headers = {'Accept': 'application/json'}
+    response = requests.get(pool_url, headers=headers)
+    if response.status_code == 200:
+        data = response.json().get('data', [])
+        if data:
+            attributes = data[0].get('attributes', {})
+            return {
+                'price_usd': round(float(attributes.get('base_token_price_usd', 0)), 4),
+                'liquidity_usd': attributes.get('reserve_in_usd', 'No data available'),
+                'volume_24h_usd': attributes.get('volume_usd', {}).get('h24', 'No data available'),
+                'fdv_usd': attributes.get('fdv_usd', 'No data available')
+            }
+    return None
 
 # Start function
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -604,49 +615,57 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     elif update.callback_query:
         await update.callback_query.edit_message_text(message, reply_markup=reply_markup)
 
-# Function to handle messages containing a wallet address
+# Function to handle messages containing a contract address
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
-    wallet_address = update.message.text.strip()
+    contract_address = update.message.text.strip()
     
-    # Fetch the relevant information about the wallet address
-    coin_info = fetch_coin_info(wallet_address)
-    if not coin_info:
-        await update.message.reply_text("Failed to fetch coin information. Please try again.")
+    # Fetch detailed token information
+    token_info = get_detailed_token_info(contract_address)
+    if not token_info:
+        await update.message.reply_text("Failed to fetch token information. Please try again.")
         return
     
+    # Fetch token pool information
+    pool_info = get_token_pool_info(contract_address)
+    if not pool_info:
+        await update.message.reply_text("Failed to fetch token pool information. Please try again.")
+        return
+
     # Prepare the response message
     response_message = (
-        f"📌 **Coin Information**\n\n"
-        f"🔗 **Address:** `{coin_info['address']}`\n"
-        f"💰 **Price:** {coin_info['price']}\n"
-        f"🔄 **Supply:** {coin_info['supply']}\n"
-        f"📊 **Market Cap:** {coin_info['market_cap']}\n"
-        f"💵 **Reserve:** {coin_info['reserve']}\n"
-        f"📈 **Volume (24h):** {coin_info['volume']}\n"
-        f"💸 **Pooled TON:** {coin_info['pooled_ton']}\n"
-        f"💼 **Wallet Balance:** {coin_info['wallet_balance']}\n\n"
+        f"📌 **Token Information**\n\n"
+        f"🔗 **Contract Address:** `{contract_address}`\n"
+        f"🏷️ **Name:** {token_info['name']}\n"
+        f"🔖 **Symbol:** {token_info['symbol']}\n"
+        f"🌐 **Website:** {token_info['websites'][0] if token_info['websites'] else 'No data available'}\n\n"
+        f"📊 **Pool Information**\n"
+        f"💰 **Price (USD):** ${pool_info['price_usd']}\n"
+        f"💧 **Liquidity (USD):** {pool_info['liquidity_usd']}\n"
+        f"📈 **Volume 24h (USD):** {pool_info['volume_24h_usd']}\n"
+        f"🏷️ **FDV (Fully Diluted Valuation):** {pool_info['fdv_usd']}\n\n"
         f"👇 **To buy, press one of the buttons below:**"
     )
 
     if user_id in user_wallets and user_wallets[user_id]:
         keyboard = [
-            [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{wallet_address}')],
-            [InlineKeyboardButton("$ Buy 1 TON", callback_data=f'buy_1_{wallet_address}'), InlineKeyboardButton("$ Buy 5 TON", callback_data=f'buy_5_{wallet_address}')],
-            [InlineKeyboardButton("$ Buy X TON", callback_data=f'buy_x_{wallet_address}')],
-            [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{wallet_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')],
-            [InlineKeyboardButton("⬅️ Back", callback_data=f'back_{wallet_address}')]
+            [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{contract_address}')],
+            [InlineKeyboardButton("$ Buy 1 TON", callback_data=f'buy_1_{contract_address}'), InlineKeyboardButton("$ Buy 5 TON", callback_data=f'buy_5_{contract_address}')],
+            [InlineKeyboardButton("$ Buy X TON", callback_data=f'buy_x_{contract_address}')],
+            [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{contract_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')],
+            [InlineKeyboardButton("⬅️ Back", callback_data=f'back_{contract_address}')]
         ]
     else:
         keyboard = [
-            [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{wallet_address}')],
+            [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{contract_address}')],
             [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet'), InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
-            [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{wallet_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')],
-            [InlineKeyboardButton("⬅️ Back", callback_data=f'back_{wallet_address}')]
+            [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{contract_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')],
+            [InlineKeyboardButton("⬅️ Back", callback_data=f'back_{contract_address}')]
         ]
-    
+
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(response_message, reply_markup=reply_markup, parse_mode='Markdown')
+
 
 # Function to send chart link
 async def send_chart_link(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_address: str) -> None:
@@ -677,50 +696,57 @@ async def handle_buy_command(update: Update, context: ContextTypes.DEFAULT_TYPE,
         )
 
 # Function to refresh coin information
-async def refresh_coin_info(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_address: str) -> None:
-    # Re-fetch the relevant information about the wallet address
-    coin_info = fetch_coin_info(wallet_address)
-    if not coin_info:
-        await update.callback_query.edit_message_text("Failed to fetch coin information. Please try again.")
+async def refresh_coin_info(update: Update, context: ContextTypes.DEFAULT_TYPE, contract_address: str) -> None:
+    # Fetch detailed token information
+    token_info = get_detailed_token_info(contract_address)
+    if not token_info:
+        await update.callback_query.edit_message_text("Failed to fetch token information. Please try again.")
+        return
+    
+    # Fetch token pool information
+    pool_info = get_token_pool_info(contract_address)
+    if not pool_info:
+        await update.callback_query.edit_message_text("Failed to fetch token pool information. Please try again.")
         return
     
     # Prepare the response message
     response_message = (
-        f"📌 **Coin Information**\n\n"
-        f"🔗 **Address:** `{coin_info['address']}`\n"
-        f"💰 **Price:** {coin_info['price']}\n"
-        f"🔄 **Supply:** {coin_info['supply']}\n"
-        f"📊 **Market Cap:** {coin_info['market_cap']}\n"
-        f"💵 **Reserve:** {coin_info['reserve']}\n"
-        f"📈 **Volume (24h):** {coin_info['volume']}\n"
-        f"💸 **Pooled TON:** {coin_info['pooled_ton']}\n"
-        f"💼 **Wallet Balance:** {coin_info['wallet_balance']}\n\n"
+        f"📌 **Token Information**\n\n"
+        f"🔗 **Contract Address:** `{contract_address}`\n"
+        f"🏷️ **Name:** {token_info['name']}\n"
+        f"🔖 **Symbol:** {token_info['symbol']}\n"
+        f"🌐 **Website:** {token_info['websites'][0] if token_info['websites'] else 'No data available'}\n\n"
+        f"📊 **Pool Information**\n"
+        f"💰 **Price (USD):** ${pool_info['price_usd']}\n"
+        f"💧 **Liquidity (USD):** {pool_info['liquidity_usd']}\n"
+        f"📈 **Volume 24h (USD):** {pool_info['volume_24h_usd']}\n"
+        f"🏷️ **FDV (Fully Diluted Valuation):** {pool_info['fdv_usd']}\n\n"
         f"👇 **To buy, press one of the buttons below:**"
     )
 
     user_id = update.callback_query.from_user.id
     if user_id in user_wallets and user_wallets[user_id]:
         keyboard = [
-            [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{wallet_address}')],
-            [InlineKeyboardButton("$ Buy 1 TON", callback_data=f'buy_1_{wallet_address}'), InlineKeyboardButton("$ Buy 5 TON", callback_data=f'buy_5_{wallet_address}')],
-            [InlineKeyboardButton("$ Buy X TON", callback_data=f'buy_x_{wallet_address}')],
-            [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{wallet_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')],
-            [InlineKeyboardButton("⬅️ Back", callback_data=f'back_{wallet_address}')]
+            [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{contract_address}')],
+            [InlineKeyboardButton("$ Buy 1 TON", callback_data=f'buy_1_{contract_address}'), InlineKeyboardButton("$ Buy 5 TON", callback_data=f'buy_5_{contract_address}')],
+            [InlineKeyboardButton("$ Buy X TON", callback_data=f'buy_x_{contract_address}')],
+            [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{contract_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')],
+            [InlineKeyboardButton("⬅️ Back", callback_data=f'back_{contract_address}')]
         ]
     else:
         keyboard = [
-            [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{wallet_address}')],
+            [InlineKeyboardButton("📈 Chart", callback_data=f'chart_{contract_address}')],
             [InlineKeyboardButton("➕ Generate Wallet", callback_data='newwallet'), InlineKeyboardButton("🔗 Connect Wallet", callback_data='connectwallet')],
-            [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{wallet_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')],
-            [InlineKeyboardButton("⬅️ Back", callback_data=f'back_{wallet_address}')]
+            [InlineKeyboardButton("🔄 Refresh", callback_data=f'refresh_{contract_address}'), InlineKeyboardButton("❌ Cancel", callback_data='mainmenu')],
+            [InlineKeyboardButton("⬅️ Back", callback_data=f'back_{contract_address}')]
         ]
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.callback_query.edit_message_text(response_message, reply_markup=reply_markup, parse_mode='Markdown')
 
 # Function to handle back commands
-async def handle_back_command(update: Update, context: ContextTypes.DEFAULT_TYPE, wallet_address: str) -> None:
-    await refresh_coin_info(update, context, wallet_address)
+async def handle_back_command(update: Update, context: ContextTypes.DEFAULT_TYPE, contract_address: str) -> None:
+    await refresh_coin_info(update, context, contract_address)
 
 def main() -> None:
     application = Application.builder().token(TELEGRAM_API_KEY).build()
